@@ -100,9 +100,18 @@ db/schema.sql          PostgreSQL schema
 docs/ER Diagram.png    Entity relationship diagram
 docker-compose.yml     Local PostgreSQL for the API
 backend/               Spring Boot REST API
+frontend/              React workspace
 ```
 
-The React frontend is not in this repository yet.
+The frontend currently covers registration, sign-in, and sign-out. With the API already running:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. The dev server forwards `/api` to `http://localhost:8080`.
 
 ## Database setup
 
