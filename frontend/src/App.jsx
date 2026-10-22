@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth.jsx'
+import NewProjectPage from './pages/NewProjectPage.jsx'
+import ProjectPage from './pages/ProjectPage.jsx'
+import ProjectsPage from './pages/ProjectsPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import SignInPage from './pages/SignInPage.jsx'
-import WorkspacePage from './pages/WorkspacePage.jsx'
 
 function RequireAuth({ children }) {
   const { user, ready } = useAuth()
@@ -45,14 +47,9 @@ export default function App() {
           </GuestOnly>
         }
       />
-      <Route
-        path="/"
-        element={
-          <RequireAuth>
-            <WorkspacePage />
-          </RequireAuth>
-        }
-      />
+      <Route path="/" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
+      <Route path="/projects/new" element={<RequireAuth><NewProjectPage /></RequireAuth>} />
+      <Route path="/projects/:projectId" element={<RequireAuth><ProjectPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

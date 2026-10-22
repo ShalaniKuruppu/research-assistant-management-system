@@ -33,8 +33,27 @@ h1, h2, .brand {
 
 a { color: var(--accent); }
 
-button, input {
+button, input, select, textarea {
   font: inherit;
+}
+
+a.brand, a.button {
+  text-decoration: none;
+}
+
+a.button {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  color: var(--ink);
+}
+
+a.button.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
 }
 
 button {
@@ -113,7 +132,10 @@ legend { font-weight: 600; padding: 0; }
 input[type="email"],
 input[type="password"],
 input[type="text"],
-input:not([type]) {
+input[type="date"],
+input:not([type]),
+select,
+textarea {
   width: 100%;
   border: 1px solid var(--line);
   background: #fff;
@@ -178,6 +200,62 @@ input:focus, button:focus-visible {
 
 .page { padding: 2.5rem 1.5rem 4rem; max-width: 46rem; }
 
+.page.wide { max-width: 76rem; }
+
+.page-head, .list-card, .split {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.page-head { align-items: end; margin-bottom: 1rem; }
+
+.stack { display: grid; gap: 0.8rem; }
+
+.list-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+  color: inherit;
+  text-decoration: none;
+  text-align: left;
+}
+
+.list-card.static { width: 100%; }
+
+.list-card h2 { margin: 0 0 0.25rem; font-size: 1.25rem; }
+
+.selected-card { border-color: var(--accent); }
+
+.meta { margin: 0.2rem 0; color: var(--muted); }
+
+.form-card, .split-layout { margin-top: 0.5rem; }
+
+.split { align-items: stretch; }
+
+.split > label { flex: 1; }
+
+.split-layout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.1fr) minmax(16rem, 0.9fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.tabs { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 1.2rem 0; }
+
+.tab.selected {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.timeline { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.8rem; }
+
+.timeline p { margin: 0.2rem 0; }
+
 .page h1 { font-size: clamp(2rem, 4vw, 3.2rem); margin: 0.35rem 0 0.8rem; }
 
 .status-line { padding: 2rem; color: var(--muted); }
@@ -189,5 +267,7 @@ input:focus, button:focus-visible {
     padding: 2rem 1.1rem 3rem;
   }
 
-  .topbar, .who { flex-wrap: wrap; }
+  .topbar, .who, .page-head, .list-card, .split { flex-wrap: wrap; }
+
+  .split-layout { grid-template-columns: 1fr; }
 }
