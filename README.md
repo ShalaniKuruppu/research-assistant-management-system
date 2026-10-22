@@ -95,20 +95,73 @@ The entity relationship diagram is in [docs/ER Diagram.png](docs/ER%20Diagram.pn
 
 ## Repository
 
-The running system has three parts: a React frontend, a Spring Boot backend, and the PostgreSQL database. The schema and diagram in this repository are the data tier.
-
 ```text
 db/schema.sql          PostgreSQL schema
 docs/ER Diagram.png    Entity relationship diagram
+docker-compose.yml     Local PostgreSQL for the API
+backend/               Spring Boot REST API
 ```
+
+The React frontend is not in this repository yet.
 
 ## Database setup
 
-Create an empty database and apply the schema:
+Start PostgreSQL with Docker. The compose file creates the database and applies `db/schema.sql` on the first start:
+
+```bash
+docker compose up -d
+```
+
+The API defaults are database `research_assistant_management`, user `rams`, and password `rams` on `localhost:5433`. Host port 5433 is used so this database does not collide with a PostgreSQL server already listening on 5432.
+
+To apply the schema yourself instead:
 
 ```bash
 createdb research_assistant_management
 psql -d research_assistant_management -f db/schema.sql
 ```
 
-Apply `db/schema.sql` once, to an empty database. Running it again on a database that already has these tables will fail.
+Apply `db/schema.sql` once, to an empty database. Running it again on a database that already has these tables will fail. The API does not create or alter tables.
+
+## Backend
+
+The API lives in `backend/`. It checks the signed-in user, then reads and writes PostgreSQL. Passwords are stored as bcrypt hashes. Sign-in returns a bearer token; send it as `Authorization: Bearer <token>`.
+
+From the repository root, with the database already running:
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+The API listens on `http://localhost:8080`. Set `JWT_SECRET` to a private value of at least 32 bytes before using this anywhere other than a local machine. `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` override the database connection.
+
+| Method | Path | Who |
+|---|---|---|
+| POST | `/api/auth/register` | Public. Body: `name`, `email`, `password`, `role` (`SUPERVISOR` or `RESEARCH_ASSISTANT`). Role cannot be changed later. |
+| POST | `/api/auth/login` | Public. Body: `email`, `password`. |
+| GET | `/api/health` | Public. |
+| GET | `/api/me` | Signed in. |
+| GET | `/api/users?role=RESEARCH_ASSISTANT` | Supervisor. Active research assistants, for assignment. |
+| POST | `/api/projects` | Supervisor. |
+| GET | `/api/projects` | Supervisor sees owned projects. An assistant sees assigned projects. |
+| GET | `/api/projects/{id}` | Owner or assigned assistant. |
+| PATCH | `/api/projects/{id}` | Owner. Send only the fields to change. |
+| POST | `/api/projects/{id}/assistants` | Owner. Body: `assistantId`. |
+| GET | `/api/projects/{id}/assistants` | Owner or assigned assistant. |
+| PATCH | `/api/projects/{id}/assistants/{assistantId}` | Owner. Body: `active`. |
+| POST | `/api/projects/{id}/tasks` | Owner. |
+| GET | `/api/projects/{id}/tasks` | Owner sees every task. An assistant sees assigned tasks. |
+| GET | `/api/tasks/{id}` | Owner or assignee. |
+| PATCH | `/api/tasks/{id}` | Owner. Does not change status or completion. |
+| POST | `/api/tasks/{id}/updates` | Assignee or owner. This is how status and completion change. A `BLOCKED` update needs `blockerNote`. |
+| GET | `/api/tasks/{id}/updates` | Assignee or owner. |
+| POST | `/api/projects/{id}/reports` | Assigned assistant. Saves a draft. |
+| GET | `/api/projects/{id}/reports` | Owner sees every report. An assistant sees their own. |
+| GET | `/api/reports/{id}` | Owner or author. |
+| PATCH | `/api/reports/{id}` | Author, while the report is a draft or the latest feedback is `NEEDS_REVISION`. |
+| POST | `/api/reports/{id}/submit` | Author, and only from draft. `workCompleted` is required. |
+| POST | `/api/reports/{id}/feedback` | Owner, after the report leaves draft. Body: `feedbackText`, `outcome` (`APPROVED` or `NEEDS_REVISION`). |
+| GET | `/api/reports/{id}/feedback` | Owner or author. |
+
+Errors are JSON: `status`, `error`, and `message`. A project, task, or report the caller cannot see is `404`. An action the caller can see but is not allowed to take is `403`.
