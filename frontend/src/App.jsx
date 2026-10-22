@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth.jsx'
+import AssistantProjectPage from './pages/AssistantProjectPage.jsx'
 import NewProjectPage from './pages/NewProjectPage.jsx'
 import ProjectPage from './pages/ProjectPage.jsx'
 import ProjectsPage from './pages/ProjectsPage.jsx'
@@ -15,6 +16,14 @@ function RequireAuth({ children }) {
     return <Navigate to="/sign-in" replace />
   }
   return children
+}
+
+function ProjectRoute() {
+  const { user } = useAuth()
+  if (user.role === 'RESEARCH_ASSISTANT') {
+    return <AssistantProjectPage />
+  }
+  return <ProjectPage />
 }
 
 function GuestOnly({ children }) {
@@ -49,7 +58,7 @@ export default function App() {
       />
       <Route path="/" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
       <Route path="/projects/new" element={<RequireAuth><NewProjectPage /></RequireAuth>} />
-      <Route path="/projects/:projectId" element={<RequireAuth><ProjectPage /></RequireAuth>} />
+      <Route path="/projects/:projectId" element={<RequireAuth><ProjectRoute /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

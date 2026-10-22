@@ -37,6 +37,9 @@ export default function ProjectsPage() {
             : 'A supervisor has not assigned you to a project yet.'}
         </p>
       ) : null}
+      {!loading && !supervisor && projects.length > 0 ? (
+        <p className="lede">Open a project to update your tasks and file a weekly report.</p>
+      ) : null}
       <div className="stack">
         {projects.map((project) => (
           <Link className="list-card" key={project.id} to={`/projects/${project.id}`}>

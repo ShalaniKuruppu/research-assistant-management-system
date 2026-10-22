@@ -103,7 +103,7 @@ backend/               Spring Boot REST API
 frontend/              React workspace
 ```
 
-The frontend covers registration, sign-in, and the supervisor workspace: create a project, assign research assistants, create tasks, read task progress, and review a submitted weekly report. With the API already running:
+The frontend covers registration, sign-in, and both workspaces. A supervisor creates a project, assigns research assistants, creates tasks, reads task progress, and reviews a submitted weekly report. A research assistant opens assigned projects, updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. With the API already running:
 
 ```bash
 cd frontend
