@@ -5,9 +5,9 @@
 --   createdb research_assistant_management
 --   psql -d research_assistant_management -f db/schema.sql
 --
--- The tables follow the ER diagram. These corrections are enforced here:
+-- The tables follow the version 1 ER diagram. These rules are enforced here:
 --
--- 1. A user writes many task updates. The diagram draws that link as 1:1.
+-- 1. A user writes many task updates.
 -- 2. An assistant is assigned to a project at most once.
 -- 3. An assistant files at most one weekly report per project per week.
 -- 4. A foreign key to users only proves the person exists. Triggers also
@@ -29,10 +29,11 @@
 -- * Feedback can be written only by that project's supervisor, and only
 --   after the report leaves DRAFT. The first feedback row moves a
 --   SUBMITTED report to REVIEWED.
--- * Removing a person or a project is done with is_active or status.
---   Rows are not cascaded away, so history stays put.
--- * Suggested status values are fixed here so the schema can reject typos.
---   Change the enum definitions before go-live if the workflow differs.
+-- * Removing a person is done with is_active. A project is retired with
+--   status ARCHIVED. Rows are not cascaded away, so history stays put.
+-- * Task status includes CANCELLED, beyond the values drawn on Task_Update.
+--   A cancelled task was dropped. That is different from DONE. The same
+--   value is accepted on a task update so the snapshot can record it.
 
 BEGIN;
 
@@ -50,14 +51,13 @@ CREATE TYPE project_status AS ENUM (
     'ACTIVE',
     'ON_HOLD',
     'COMPLETED',
-    'CANCELLED'
+    'ARCHIVED'
 );
 
 CREATE TYPE task_priority AS ENUM (
     'LOW',
     'MEDIUM',
-    'HIGH',
-    'URGENT'
+    'HIGH'
 );
 
 CREATE TYPE task_status AS ENUM (
@@ -76,8 +76,7 @@ CREATE TYPE report_status AS ENUM (
 
 CREATE TYPE feedback_outcome AS ENUM (
     'APPROVED',
-    'REVISION_REQUIRED',
-    'ACKNOWLEDGED'
+    'NEEDS_REVISION'
 );
 
 -- ---------------------------------------------------------------------------
