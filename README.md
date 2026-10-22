@@ -103,7 +103,7 @@ backend/               Spring Boot REST API
 frontend/              React workspace
 ```
 
-The frontend covers registration, sign-in, and both workspaces. A supervisor creates a project, assigns research assistants, creates tasks, reads task progress, and reviews a submitted weekly report. A research assistant opens assigned projects, updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. With the API already running:
+The frontend covers registration, sign-in, and both workspaces. The home screen is a dashboard of project, task, and report counts, plus the items that need attention. A supervisor creates a project, assigns research assistants, creates tasks, reads task progress, and reviews a submitted weekly report. A research assistant opens assigned projects, updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. With the API already running:
 
 ```bash
 cd frontend
@@ -151,6 +151,7 @@ The API listens on `http://localhost:8080`. Set `JWT_SECRET` to a private value 
 | POST | `/api/auth/login` | Public. Body: `email`, `password`. |
 | GET | `/api/health` | Public. |
 | GET | `/api/me` | Signed in. |
+| GET | `/api/dashboard` | Signed in. Counts, project summaries, and items that need attention. A supervisor sees owned work. An assistant sees assigned work. |
 | GET | `/api/users?role=RESEARCH_ASSISTANT` | Supervisor. Active research assistants, for assignment. |
 | POST | `/api/projects` | Supervisor. |
 | GET | `/api/projects` | Supervisor sees owned projects. An assistant sees assigned projects. |

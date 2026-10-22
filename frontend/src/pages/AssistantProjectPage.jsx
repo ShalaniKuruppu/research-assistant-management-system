@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, api } from '../api.js'
 import { currentWeek, formatWhen, label } from '../format.js'
 import Shell from '../Shell.jsx'
@@ -17,6 +17,8 @@ const REPORT_FIELDS = [
 
 export default function AssistantProjectPage() {
   const { projectId } = useParams()
+  const [searchParams] = useSearchParams()
+  const query = searchParams.toString()
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [reports, setReports] = useState([])
@@ -48,6 +50,10 @@ export default function AssistantProjectPage() {
   }
 
   useEffect(() => {
+    const sectionName = searchParams.get('section') === 'reports' ? 'reports' : 'tasks'
+    const compose = searchParams.get('compose') === '1'
+    const taskId = Number(searchParams.get('task'))
+    const reportId = Number(searchParams.get('report'))
     let cancelled = false
     setLoading(true)
     setError('')
@@ -55,16 +61,27 @@ export default function AssistantProjectPage() {
     setSelectedTask(null)
     setSelectedReport(null)
     setComposing(false)
-    setSection('tasks')
+    setSection(sectionName)
     load()
       .then((data) => {
         if (cancelled) return
         apply(data)
-        setSelectedTask(data.tasks[0] || null)
-        if (data.reports[0]) {
-          setSelectedReport(data.reports[0])
-        } else {
+        const task = data.tasks.find((item) => item.id === taskId)
+        setSelectedTask(task || data.tasks[0] || null)
+        if (compose) {
           setComposing(true)
+          setSelectedReport(null)
+        } else {
+          const report = data.reports.find((item) => item.id === reportId)
+          if (report) {
+            setSelectedReport(report)
+            setComposing(false)
+          } else if (data.reports[0]) {
+            setSelectedReport(data.reports[0])
+            setComposing(false)
+          } else {
+            setComposing(true)
+          }
         }
       })
       .catch((caught) => {
@@ -78,7 +95,7 @@ export default function AssistantProjectPage() {
     return () => {
       cancelled = true
     }
-  }, [projectId])
+  }, [projectId, query])
 
   useEffect(() => {
     if (!selectedTask) {
@@ -220,7 +237,7 @@ export default function AssistantProjectPage() {
 
   return (
     <Shell>
-      <p className="eyebrow"><Link to="/">Assigned projects</Link></p>
+      <p className="eyebrow"><Link to="/projects">Assigned projects</Link></p>
       {loading ? <p className="status-line">Loading project…</p> : null}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {notice ? <p className="form-note" role="status">{notice}</p> : null}

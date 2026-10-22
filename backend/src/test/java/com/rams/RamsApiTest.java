@@ -205,6 +205,35 @@ class RamsApiTest {
                 .andExpect(jsonPath("$.status").value("REVIEWED"))
                 .andExpect(jsonPath("$.latestOutcome").value("NEEDS_REVISION"));
 
+        mockMvc.perform(get("/api/dashboard"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/dashboard")
+                        .header("Authorization", "Bearer " + assistantToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectCount").value(1))
+                .andExpect(jsonPath("$.openTaskCount").value(1))
+                .andExpect(jsonPath("$.blockedTaskCount").value(0))
+                .andExpect(jsonPath("$.revisionCount").value(1))
+                .andExpect(jsonPath("$.projects[0].title").value("Archive study"))
+                .andExpect(jsonPath(
+                        "$.attention[?(@.kind == 'REVISION')]",
+                        org.hamcrest.Matchers.hasSize(1)
+                ));
+
+        mockMvc.perform(get("/api/dashboard")
+                        .header("Authorization", "Bearer " + supervisorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectCount").value(1))
+                .andExpect(jsonPath("$.openTaskCount").value(1))
+                .andExpect(jsonPath("$.submittedReportCount").value(0));
+
+        mockMvc.perform(get("/api/dashboard")
+                        .header("Authorization", "Bearer " + outsiderToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectCount").value(0))
+                .andExpect(jsonPath("$.attention", org.hamcrest.Matchers.hasSize(0)));
+
         mockMvc.perform(patch("/api/reports/" + reportId)
                         .header("Authorization", "Bearer " + assistantToken)
                         .contentType(MediaType.APPLICATION_JSON)

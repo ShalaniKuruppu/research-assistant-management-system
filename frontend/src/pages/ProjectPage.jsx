@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { label } from '../format.js'
@@ -7,6 +7,8 @@ import Shell from '../Shell.jsx'
 
 export default function ProjectPage() {
   const { projectId } = useParams()
+  const [searchParams] = useSearchParams()
+  const query = searchParams.toString()
   const { user } = useAuth()
   const supervisor = user.role === 'SUPERVISOR'
   const [project, setProject] = useState(null)
@@ -37,14 +39,36 @@ export default function ProjectPage() {
     setTasks(taskData)
     setReports(reportData)
     setCandidates(people || [])
+    return { tasks: taskData, reports: reportData }
   }
 
   useEffect(() => {
+    const requested = searchParams.get('section')
+    if (requested === 'assistants' || requested === 'tasks' || requested === 'reports') {
+      setSection(requested)
+    }
+    let cancelled = false
     setLoading(true)
     load()
-      .catch((caught) => setError(caught instanceof ApiError ? caught.message : 'Could not load this project'))
-      .finally(() => setLoading(false))
-  }, [projectId])
+      .then((data) => {
+        if (cancelled || !data) return
+        const task = data.tasks.find((item) => item.id === Number(searchParams.get('task')))
+        const report = data.reports.find((item) => item.id === Number(searchParams.get('report')))
+        if (task) showProgress(task)
+        if (report) showReport(report)
+      })
+      .catch((caught) => {
+        if (!cancelled) {
+          setError(caught instanceof ApiError ? caught.message : 'Could not load this project')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, query])
 
   async function run(action, success) {
     setError('')
@@ -88,7 +112,7 @@ export default function ProjectPage() {
 
   return (
     <Shell>
-      <p className="eyebrow"><Link to="/">Projects</Link></p>
+      <p className="eyebrow"><Link to="/projects">Projects</Link></p>
       {loading ? <p className="status-line">Loading project…</p> : null}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {notice ? <p className="form-note" role="status">{notice}</p> : null}

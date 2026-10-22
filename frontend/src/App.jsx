@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth.jsx'
 import AssistantProjectPage from './pages/AssistantProjectPage.jsx'
+import DashboardPage from './pages/DashboardPage.jsx'
 import NewProjectPage from './pages/NewProjectPage.jsx'
 import ProjectPage from './pages/ProjectPage.jsx'
 import ProjectsPage from './pages/ProjectsPage.jsx'
@@ -56,7 +57,8 @@ export default function App() {
           </GuestOnly>
         }
       />
-      <Route path="/" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
+      <Route path="/" element={<RequireAuth><DashboardPage /></RequireAuth>} />
+      <Route path="/projects" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
       <Route path="/projects/new" element={<RequireAuth><NewProjectPage /></RequireAuth>} />
       <Route path="/projects/:projectId" element={<RequireAuth><ProjectRoute /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
