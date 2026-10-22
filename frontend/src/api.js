@@ -25,7 +25,7 @@ export async function api(path, { method = 'GET', body } = {}) {
     headers['Content-Type'] = 'application/json'
   }
   const token = getToken()
-  if (token) {
+  if (token && !path.startsWith('/api/auth/')) {
     headers.Authorization = `Bearer ${token}`
   }
 
@@ -36,9 +36,15 @@ export async function api(path, { method = 'GET', body } = {}) {
   })
 
   const text = await response.text()
-  const data = text ? JSON.parse(text) : null
+  let data = null
+  try {
+    data = text ? JSON.parse(text) : null
+  } catch {
+    throw new ApiError(response.status, 'The server did not return JSON')
+  }
   if (!response.ok) {
-    throw new ApiError(response.status, data?.message || 'The request failed')
+    const fieldMessage = data?.fields ? Object.values(data.fields).filter(Boolean).join(' ') : ''
+    throw new ApiError(response.status, fieldMessage || data?.message || 'The request failed')
   }
   return data
 }

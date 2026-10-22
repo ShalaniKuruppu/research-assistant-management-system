@@ -6,20 +6,21 @@ import { useAuth } from '../auth.jsx'
 export default function SignInPage() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
 
   async function onSubmit(event) {
     event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    const email = String(form.get('email') || '').trim()
+    const password = String(form.get('password') || '')
     setError('')
     setPending(true)
     try {
-      await signIn(email.trim(), password)
+      await signIn(email, password)
       navigate('/', { replace: true })
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Sign-in failed')
+      setError(caught instanceof ApiError ? caught.message : 'Sign-in failed. Is the API running on port 8080?')
     } finally {
       setPending(false)
     }
@@ -38,20 +39,18 @@ export default function SignInPage() {
         <label>
           Email
           <input
+            name="email"
             type="email"
             autoComplete="username"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
             required
           />
         </label>
         <label>
           Password
           <input
+            name="password"
             type="password"
             autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
             required
           />
         </label>

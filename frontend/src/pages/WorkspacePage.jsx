@@ -17,7 +17,7 @@ export default function WorkspacePage() {
         <p className="eyebrow">Signed in</p>
         <h1>Welcome, {user.name}</h1>
         <p className="lede">
-          You are signed in as a {roleLabel(user.role).toLowerCase()}. Projects, tasks, and weekly reports come next.
+          This session is signed in as <strong>{user.email}</strong>, a {roleLabel(user.role).toLowerCase()}.
         </p>
       </main>
     </div>
