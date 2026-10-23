@@ -32,7 +32,7 @@ UI         REST API         data
 
 | Tier | Technology | Responsibility |
 |---|---|---|
-| Presentation | React | Screens for the supervisor and the research assistant. Sign-in, projects, assignments, tasks, weekly reports, and feedback. |
+| Presentation | React | Screens for the supervisor and the research assistant. Sign-in, the dashboard, projects, assignments, tasks, weekly reports, and feedback. |
 | Application | Spring Boot | REST API, authentication, and role checks. Enforces who may assign assistants, create tasks, post progress, submit reports, and leave feedback. |
 | Data | PostgreSQL | Stores users, projects, assignments, tasks, progress, weekly reports, and feedback. Constraints and triggers protect the rules below. |
 
@@ -44,13 +44,49 @@ Passwords are stored as hashes. The database rejects a short plaintext value in 
 
 | Layer | Choice |
 |---|---|
-| Frontend | React |
-| Backend | Spring Boot |
-| Database | PostgreSQL 14 or newer |
+| Frontend | React 19, React Router, Vite |
+| Backend | Spring Boot 3.4, Java 17, Maven |
+| Database | PostgreSQL 16 in Docker, or PostgreSQL 14 or newer if you install it yourself |
+| Auth | JWT bearer tokens. Passwords are bcrypt hashes. A token lasts 12 hours unless `JWT_EXPIRATION_MINUTES` says otherwise. |
 | API style | REST, JSON |
 | Schema | `db/schema.sql` |
 
 PostgreSQL holds the durable data and the hard rules: one role per person, one assignment of an assistant per project, one weekly report per assistant per project week, and task progress taken from the latest update. Spring Boot is where sign-in and the role-specific actions live. React renders the two workspaces and never opens a database connection.
+
+## Run locally
+
+Start the three tiers in this order. Docker, Java 17, Maven, and Node.js are required.
+
+```bash
+docker compose up -d
+cd backend
+mvn spring-boot:run
+```
+
+In a second terminal, with the API already listening:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. The dev server forwards `/api` to `http://localhost:8080`. The API defaults are database `research_assistant_management`, user `rams`, and password `rams` on `localhost:5433`. Host port 5433 is used so this database does not collide with a PostgreSQL server already listening on 5432.
+
+Set `JWT_SECRET` to a private value of at least 32 bytes before using this anywhere other than a local machine. `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` override the database connection.
+
+## Screens
+
+| Path | Who | What |
+|---|---|---|
+| `/sign-in` | Guest | Sign in with email and password. |
+| `/register` | Guest | Create an account. The role is chosen here and stays fixed. Password is 8 to 72 characters. |
+| `/` | Signed in | Dashboard. |
+| `/projects` | Signed in | Projects the caller can see. |
+| `/projects/new` | Supervisor | Create a project. |
+| `/projects/:id` | Owner or assigned assistant | Project workspace. |
+
+The supervisor workspace assigns assistants, creates tasks, reads progress, and reviews submitted weekly reports. The assistant workspace updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. A dashboard item opens the matching task or report on that project.
 
 ## Domain model
 
@@ -93,6 +129,25 @@ The entity relationship diagram is in [docs/ER Diagram.png](docs/ER%20Diagram.pn
 
 `CANCELLED` means the task was dropped. `DONE` means the work finished.
 
+## Dashboard
+
+`GET /api/dashboard` returns counts, one summary per visible project, and a list of items that need attention. A supervisor sees owned projects. An assistant sees assigned projects and only their own tasks and reports.
+
+The home screen shows four counts: projects, open tasks, blocked tasks, and overdue tasks. Each project summary shows open tasks, blocked tasks, and average completion of active tasks. Open means the task is active and neither `DONE` nor `CANCELLED`. Overdue means an open task whose due date is before today.
+
+The attention list is ordered as follows. Each role sees the kinds in its column.
+
+| Kind | Who sees it | Meaning |
+|---|---|---|
+| `REVIEW` | Supervisor | A report is `SUBMITTED` and waiting for feedback. |
+| `REVISION` | Research assistant | The latest feedback on their report is `NEEDS_REVISION`. |
+| `BLOCKED` | Both | An active task is `BLOCKED`. |
+| `OVERDUE` | Both | An open task is past its due date. |
+| `DRAFT` | Research assistant | Their report is still a draft. |
+| `MISSING_REPORT` | Both, on an `ACTIVE` project | No report for that person covers today. A supervisor sees one item per active assistant. |
+
+The response also counts submitted reports, drafts, and reports whose latest feedback is `NEEDS_REVISION`.
+
 ## Repository
 
 ```text
@@ -102,16 +157,6 @@ docker-compose.yml     Local PostgreSQL for the API
 backend/               Spring Boot REST API
 frontend/              React workspace
 ```
-
-The frontend covers registration, sign-in, and both workspaces. The home screen is a dashboard of project, task, and report counts, plus the items that need attention. A supervisor creates a project, assigns research assistants, creates tasks, reads task progress, and reviews a submitted weekly report. A research assistant opens assigned projects, updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. With the API already running:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173`. The dev server forwards `/api` to `http://localhost:8080`.
 
 ## Database setup
 
@@ -143,15 +188,22 @@ cd backend
 mvn spring-boot:run
 ```
 
-The API listens on `http://localhost:8080`. Set `JWT_SECRET` to a private value of at least 32 bytes before using this anywhere other than a local machine. `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` override the database connection.
+The API listens on `http://localhost:8080`.
+
+API tests use Testcontainers and need Docker:
+
+```bash
+cd backend
+mvn test
+```
 
 | Method | Path | Who |
 |---|---|---|
-| POST | `/api/auth/register` | Public. Body: `name`, `email`, `password`, `role` (`SUPERVISOR` or `RESEARCH_ASSISTANT`). Role cannot be changed later. |
+| POST | `/api/auth/register` | Public. Body: `name`, `email`, `password` (8 to 72 characters), `role` (`SUPERVISOR` or `RESEARCH_ASSISTANT`). Role cannot be changed later. |
 | POST | `/api/auth/login` | Public. Body: `email`, `password`. |
 | GET | `/api/health` | Public. |
 | GET | `/api/me` | Signed in. |
-| GET | `/api/dashboard` | Signed in. Counts, project summaries, and items that need attention. A supervisor sees owned work. An assistant sees assigned work. |
+| GET | `/api/dashboard` | Signed in. Counts, project summaries, and the attention list described above. |
 | GET | `/api/users?role=RESEARCH_ASSISTANT` | Supervisor. Active research assistants, for assignment. |
 | POST | `/api/projects` | Supervisor. |
 | GET | `/api/projects` | Supervisor sees owned projects. An assistant sees assigned projects. |
