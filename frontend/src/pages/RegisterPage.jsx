@@ -41,7 +41,7 @@ export default function RegisterPage() {
       <section className="gate-copy">
         <p className="eyebrow">Research Assistant Management</p>
         <h1>Create an account</h1>
-        <p>Choose a role now. It stays fixed for the life of the account.</p>
+        <p>Choose a role now.</p>
       </section>
       <form className="card" onSubmit={onSubmit}>
         <h2>Register</h2>
