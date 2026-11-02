@@ -255,6 +255,38 @@ export default function AssistantProjectPage() {
           {project.description ? <p className="lede">{project.description}</p> : null}
           {project.objectives ? <p className="meta">Objectives: {project.objectives}</p> : null}
           <section className="card">
+            <h2>Research plan</h2>
+            <p className="meta">Describe your approach, milestones, methods, and expected outcomes for this project.</p>
+            <form
+              className="stack"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const researchPlan = String(new FormData(event.currentTarget).get('researchPlan') || '').trim()
+                run(
+                  () => api(`/api/projects/${project.id}/research-plan`, {
+                    method: 'PATCH',
+                    body: { researchPlan },
+                  }),
+                  researchPlan ? 'Research plan saved.' : 'Research plan cleared.',
+                )
+              }}
+            >
+              <label>
+                Plan
+                <textarea
+                  name="researchPlan"
+                  rows={8}
+                  maxLength={20000}
+                  defaultValue={project.researchPlan || ''}
+                  placeholder="1. Research question&#10;2. Methodology&#10;3. Milestones&#10;4. Expected results"
+                />
+              </label>
+              <button className="primary" type="submit" disabled={pending}>
+                {pending ? 'Saving…' : 'Save research plan'}
+              </button>
+            </form>
+          </section>
+          <section className="card">
             <h2>Overleaf paper</h2>
             <p className="meta">Submit the HTTPS Overleaf project link so your supervisor can open the paper.</p>
             <form

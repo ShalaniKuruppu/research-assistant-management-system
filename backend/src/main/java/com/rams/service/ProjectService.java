@@ -116,6 +116,18 @@ public class ProjectService {
     }
 
     @Transactional
+    public ProjectResponse updateResearchPlan(UserAccount user, Long projectId, String researchPlan) {
+        Project project = requireVisible(user, projectId);
+        if (user.getRole() != UserRole.RESEARCH_ASSISTANT
+                || !assignments.existsByProjectIdAndAssistantIdAndActiveTrue(projectId, user.getId())) {
+            throw ApiException.forbidden("Only an assigned research assistant can submit a research plan");
+        }
+        project.setResearchPlan(Text.optional(researchPlan, 20000, "Research plan"));
+        entityManager.flush();
+        return toResponses(List.of(project), false).get(0);
+    }
+
+    @Transactional
     public AssignmentResult assign(UserAccount user, Long projectId, Long assistantId) {
         requireOwner(user, projectId);
         UserAccount assistant = users.findById(assistantId)
@@ -238,6 +250,7 @@ public class ProjectService {
                 project.getDescription(),
                 project.getObjectives(),
                 project.getPaperLink(),
+                project.getResearchPlan(),
                 project.getStartDate(),
                 project.getEndDate(),
                 project.getStatus(),

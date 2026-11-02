@@ -43,6 +43,9 @@ public final class ProjectDtos {
     public record PaperLinkRequest(@Size(max = 1000) String paperLink) {
     }
 
+    public record ResearchPlanRequest(@Size(max = 20000) String researchPlan) {
+    }
+
     public record AssignmentResponse(
             Long id,
             Long projectId,
@@ -62,6 +65,7 @@ public final class ProjectDtos {
             String description,
             String objectives,
             String paperLink,
+            String researchPlan,
             LocalDate startDate,
             LocalDate endDate,
             ProjectStatus status,

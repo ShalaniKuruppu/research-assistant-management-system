@@ -34,6 +34,9 @@ public class Project extends Timestamped {
     @Column(name = "paper_link", length = 1000)
     private String paperLink;
 
+    @Column(name = "research_plan", columnDefinition = "text")
+    private String researchPlan;
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
@@ -86,6 +89,14 @@ public class Project extends Timestamped {
 
     public void setPaperLink(String paperLink) {
         this.paperLink = paperLink;
+    }
+
+    public String getResearchPlan() {
+        return researchPlan;
+    }
+
+    public void setResearchPlan(String researchPlan) {
+        this.researchPlan = researchPlan;
     }
 
     public LocalDate getStartDate() {

@@ -88,6 +88,10 @@ For an existing database, apply the migration:
 psql -h localhost -p 5433 -U rams -d research_assistant_management -f db/migrations/003_project_paper_link.sql
 ```
 
+An assigned research assistant can also write and update a research plan from
+the project workspace. The project supervisor can read the saved plan.
+Apply `db/migrations/004_research_plan.sql` to existing databases.
+
 ## Screens
 
 | Path | Who | What |

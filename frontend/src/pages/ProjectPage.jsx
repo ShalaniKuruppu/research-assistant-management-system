@@ -130,6 +130,18 @@ export default function ProjectPage() {
           {project.description ? <p className="lede">{project.description}</p> : null}
           {project.objectives ? <p className="meta">Objectives: {project.objectives}</p> : null}
           <section className="card">
+            <h2>Research plan</h2>
+            {project.researchPlan ? (
+              <div className="prose">
+                {project.researchPlan.split('\n').map((line, index) => (
+                  <p key={`${index}-${line}`}>{line || '\u00a0'}</p>
+                ))}
+              </div>
+            ) : (
+              <p className="meta">The research assistant has not submitted a research plan yet.</p>
+            )}
+          </section>
+          <section className="card">
             <h2>Overleaf paper</h2>
             {project.paperLink ? (
               <p>
