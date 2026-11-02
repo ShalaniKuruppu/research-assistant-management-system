@@ -419,6 +419,14 @@ BEFORE INSERT OR UPDATE ON projects
 FOR EACH ROW
 EXECUTE FUNCTION enforce_project_supervisor();
 
+CREATE TABLE research_plan_versions (
+    version_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    project_id    BIGINT NOT NULL REFERENCES projects (project_id) ON DELETE CASCADE,
+    changed_by    BIGINT NOT NULL REFERENCES users (user_id) ON DELETE RESTRICT,
+    plan_text     TEXT NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE project_assistants (
     project_assistant_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     project_id           BIGINT NOT NULL REFERENCES projects (project_id) ON DELETE RESTRICT,

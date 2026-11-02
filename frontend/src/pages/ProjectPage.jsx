@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, api } from '../api.js'
 import { useAuth } from '../auth.jsx'
-import { label } from '../format.js'
+import { formatWhen, label } from '../format.js'
 import Shell from '../Shell.jsx'
 
 export default function ProjectPage() {
@@ -14,6 +14,7 @@ export default function ProjectPage() {
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [reports, setReports] = useState([])
+  const [researchPlanHistory, setResearchPlanHistory] = useState([])
   const [candidates, setCandidates] = useState([])
   const [section, setSection] = useState('assistants')
   const [selectedTask, setSelectedTask] = useState(null)
@@ -30,14 +31,16 @@ export default function ProjectPage() {
       api(`/api/projects/${projectId}`),
       api(`/api/projects/${projectId}/tasks`),
       api(`/api/projects/${projectId}/reports`),
+      api(`/api/projects/${projectId}/research-plan/history`),
     ]
     if (supervisor) {
       requests.push(api('/api/users?role=RESEARCH_ASSISTANT'))
     }
-    const [projectData, taskData, reportData, people] = await Promise.all(requests)
+    const [projectData, taskData, reportData, history, people] = await Promise.all(requests)
     setProject(projectData)
     setTasks(taskData)
     setReports(reportData)
+    setResearchPlanHistory(history)
     setCandidates(people || [])
     return { tasks: taskData, reports: reportData }
   }
@@ -139,6 +142,21 @@ export default function ProjectPage() {
               </div>
             ) : (
               <p className="meta">The research assistant has not submitted a research plan yet.</p>
+            )}
+            <h3>Previous versions</h3>
+            {researchPlanHistory.length === 0 ? (
+              <p className="meta">No previous versions yet.</p>
+            ) : (
+              researchPlanHistory.map((version) => (
+                <details key={version.id}>
+                  <summary>{formatWhen(version.createdAt)}{version.changedByName ? ` · ${version.changedByName}` : ''}</summary>
+                  <div className="prose">
+                    {version.planText.split('\n').map((line, index) => (
+                      <p key={`${version.id}-${index}`}>{line || '\u00a0'}</p>
+                    ))}
+                  </div>
+                </details>
+              ))
             )}
           </section>
           <section className="card">

@@ -90,7 +90,10 @@ psql -h localhost -p 5433 -U rams -d research_assistant_management -f db/migrati
 
 An assigned research assistant can also write and update a research plan from
 the project workspace. The project supervisor can read the saved plan.
-Apply `db/migrations/004_research_plan.sql` to existing databases.
+The system preserves the previous plan on every changed update and both users
+can expand the timestamped previous versions. Apply
+`db/migrations/004_research_plan.sql` and
+`db/migrations/005_research_plan_history.sql` to existing databases.
 
 ## Screens
 

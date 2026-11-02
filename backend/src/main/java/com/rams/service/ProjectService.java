@@ -3,10 +3,12 @@ package com.rams.service;
 import com.rams.domain.Project;
 import com.rams.domain.ProjectAssistant;
 import com.rams.domain.ProjectStatus;
+import com.rams.domain.ResearchPlanVersion;
 import com.rams.domain.UserAccount;
 import com.rams.domain.UserRole;
 import com.rams.repository.ProjectAssistantRepository;
 import com.rams.repository.ProjectRepository;
+import com.rams.repository.ResearchPlanVersionRepository;
 import com.rams.repository.UserRepository;
 import com.rams.web.ApiException;
 import com.rams.web.Text;
@@ -15,6 +17,7 @@ import com.rams.web.dto.ProjectDtos.AssignmentResult;
 import com.rams.web.dto.ProjectDtos.CreateProjectRequest;
 import com.rams.web.dto.ProjectDtos.ProjectResponse;
 import com.rams.web.dto.ProjectDtos.UpdateProjectRequest;
+import com.rams.web.dto.ProjectDtos.ResearchPlanVersionResponse;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,17 +38,20 @@ public class ProjectService {
     private final ProjectRepository projects;
     private final ProjectAssistantRepository assignments;
     private final UserRepository users;
+    private final ResearchPlanVersionRepository researchPlanVersions;
     private final EntityManager entityManager;
 
     public ProjectService(
             ProjectRepository projects,
             ProjectAssistantRepository assignments,
             UserRepository users,
+            ResearchPlanVersionRepository researchPlanVersions,
             EntityManager entityManager
     ) {
         this.projects = projects;
         this.assignments = assignments;
         this.users = users;
+        this.researchPlanVersions = researchPlanVersions;
         this.entityManager = entityManager;
     }
 
@@ -122,9 +128,33 @@ public class ProjectService {
                 || !assignments.existsByProjectIdAndAssistantIdAndActiveTrue(projectId, user.getId())) {
             throw ApiException.forbidden("Only an assigned research assistant can submit a research plan");
         }
-        project.setResearchPlan(Text.optional(researchPlan, 20000, "Research plan"));
+        String nextPlan = Text.optional(researchPlan, 20000, "Research plan");
+        if (project.getResearchPlan() != null && !project.getResearchPlan().equals(nextPlan)) {
+            ResearchPlanVersion version = new ResearchPlanVersion();
+            version.setProjectId(projectId);
+            version.setChangedBy(user.getId());
+            version.setPlanText(project.getResearchPlan());
+            researchPlanVersions.save(version);
+        }
+        project.setResearchPlan(nextPlan);
         entityManager.flush();
         return toResponses(List.of(project), false).get(0);
+    }
+
+    public List<ResearchPlanVersionResponse> researchPlanHistory(UserAccount user, Long projectId) {
+        requireVisible(user, projectId);
+        List<ResearchPlanVersion> versions = researchPlanVersions.findByProjectIdOrderByCreatedAtDescIdDesc(projectId);
+        Map<Long, UserAccount> people = users.findAllById(
+                versions.stream().map(ResearchPlanVersion::getChangedBy).distinct().toList()
+        ).stream().collect(java.util.stream.Collectors.toMap(UserAccount::getId, person -> person));
+        return versions.stream()
+                .map(version -> new ResearchPlanVersionResponse(
+                        version.getId(),
+                        version.getPlanText(),
+                        people.get(version.getChangedBy()) == null ? null : people.get(version.getChangedBy()).getName(),
+                        version.getCreatedAt()
+                ))
+                .toList();
     }
 
     @Transactional

@@ -22,6 +22,7 @@ export default function AssistantProjectPage() {
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [reports, setReports] = useState([])
+  const [researchPlanHistory, setResearchPlanHistory] = useState([])
   const [section, setSection] = useState('tasks')
   const [selectedTask, setSelectedTask] = useState(null)
   const [updates, setUpdates] = useState([])
@@ -39,13 +40,15 @@ export default function AssistantProjectPage() {
       api(`/api/projects/${projectId}/tasks`),
       api(`/api/projects/${projectId}/reports`),
     ])
-    return { project: projectData, tasks: taskData, reports: reportData }
+    const history = await api(`/api/projects/${projectId}/research-plan/history`)
+    return { project: projectData, tasks: taskData, reports: reportData, history }
   }
 
   function apply(data) {
     setProject(data.project)
     setTasks(data.tasks)
     setReports(data.reports)
+    setResearchPlanHistory(data.history)
     return data
   }
 
@@ -285,6 +288,21 @@ export default function AssistantProjectPage() {
                 {pending ? 'Saving…' : 'Save research plan'}
               </button>
             </form>
+            <h3>Previous versions</h3>
+            {researchPlanHistory.length === 0 ? (
+              <p className="meta">No previous versions yet.</p>
+            ) : (
+              researchPlanHistory.map((version) => (
+                <details key={version.id}>
+                  <summary>{formatWhen(version.createdAt)}{version.changedByName ? ` · ${version.changedByName}` : ''}</summary>
+                  <div className="prose">
+                    {version.planText.split('\n').map((line, index) => (
+                      <p key={`${version.id}-${index}`}>{line || '\u00a0'}</p>
+                    ))}
+                  </div>
+                </details>
+              ))
+            )}
           </section>
           <section className="card">
             <h2>Overleaf paper</h2>

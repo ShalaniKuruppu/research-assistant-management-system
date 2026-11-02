@@ -46,6 +46,14 @@ public final class ProjectDtos {
     public record ResearchPlanRequest(@Size(max = 20000) String researchPlan) {
     }
 
+    public record ResearchPlanVersionResponse(
+            Long id,
+            String planText,
+            String changedByName,
+            Instant createdAt
+    ) {
+    }
+
     public record AssignmentResponse(
             Long id,
             Long projectId,
