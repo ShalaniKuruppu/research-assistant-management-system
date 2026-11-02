@@ -40,6 +40,9 @@ public final class ProjectDtos {
     public record UpdateAssignmentRequest(@NotNull Boolean active) {
     }
 
+    public record PaperLinkRequest(@Size(max = 1000) String paperLink) {
+    }
+
     public record AssignmentResponse(
             Long id,
             Long projectId,
@@ -58,6 +61,7 @@ public final class ProjectDtos {
             String title,
             String description,
             String objectives,
+            String paperLink,
             LocalDate startDate,
             LocalDate endDate,
             ProjectStatus status,

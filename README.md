@@ -75,6 +75,19 @@ Open `http://localhost:5173`. The dev server forwards `/api` to `http://localhos
 
 Set `JWT_SECRET` to a private value of at least 32 bytes before using this anywhere other than a local machine. `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` override the database connection.
 
+## Overleaf paper links
+
+An assigned research assistant can submit an HTTPS Overleaf project link from
+the project workspace. The project supervisor can then open the submitted link
+from the project page. RAMS does not bypass Overleaf permissions; the viewer
+must have access to the Overleaf project.
+
+For an existing database, apply the migration:
+
+```bash
+psql -h localhost -p 5433 -U rams -d research_assistant_management -f db/migrations/003_project_paper_link.sql
+```
+
 ## Screens
 
 | Path | Who | What |

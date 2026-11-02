@@ -254,6 +254,38 @@ export default function AssistantProjectPage() {
           </div>
           {project.description ? <p className="lede">{project.description}</p> : null}
           {project.objectives ? <p className="meta">Objectives: {project.objectives}</p> : null}
+          <section className="card">
+            <h2>Overleaf paper</h2>
+            <p className="meta">Submit the HTTPS Overleaf project link so your supervisor can open the paper.</p>
+            <form
+              className="stack"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const paperLink = String(new FormData(event.currentTarget).get('paperLink') || '').trim()
+                run(
+                  () => api(`/api/projects/${project.id}/paper-link`, {
+                    method: 'PATCH',
+                    body: { paperLink },
+                  }),
+                  paperLink ? 'Overleaf paper link submitted.' : 'Overleaf paper link removed.',
+                )
+              }}
+            >
+              <label>
+                Overleaf link
+                <input
+                  name="paperLink"
+                  type="url"
+                  placeholder="https://www.overleaf.com/project/..."
+                  defaultValue={project.paperLink || ''}
+                  maxLength={1000}
+                />
+              </label>
+              <button className="primary" type="submit" disabled={pending}>
+                {pending ? 'Saving…' : 'Save paper link'}
+              </button>
+            </form>
+          </section>
 
           <div className="tabs" role="tablist">
             <button

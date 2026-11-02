@@ -132,6 +132,7 @@ legend { font-weight: 600; padding: 0; }
 input[type="email"],
 input[type="password"],
 input[type="text"],
+input[type="url"],
 input[type="date"],
 input[type="number"],
 input:not([type]),

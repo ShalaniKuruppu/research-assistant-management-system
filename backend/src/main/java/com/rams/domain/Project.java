@@ -31,6 +31,9 @@ public class Project extends Timestamped {
     @Column(columnDefinition = "text")
     private String objectives;
 
+    @Column(name = "paper_link", length = 1000)
+    private String paperLink;
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
@@ -75,6 +78,14 @@ public class Project extends Timestamped {
 
     public void setObjectives(String objectives) {
         this.objectives = objectives;
+    }
+
+    public String getPaperLink() {
+        return paperLink;
+    }
+
+    public void setPaperLink(String paperLink) {
+        this.paperLink = paperLink;
     }
 
     public LocalDate getStartDate() {

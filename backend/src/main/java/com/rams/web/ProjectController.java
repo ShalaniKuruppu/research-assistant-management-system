@@ -8,6 +8,7 @@ import com.rams.web.dto.ProjectDtos.AssignmentResponse;
 import com.rams.web.dto.ProjectDtos.AssignmentResult;
 import com.rams.web.dto.ProjectDtos.CreateProjectRequest;
 import com.rams.web.dto.ProjectDtos.ProjectResponse;
+import com.rams.web.dto.ProjectDtos.PaperLinkRequest;
 import com.rams.web.dto.ProjectDtos.UpdateAssignmentRequest;
 import com.rams.web.dto.ProjectDtos.UpdateProjectRequest;
 import jakarta.validation.Valid;
@@ -54,6 +55,14 @@ public class ProjectController {
     @PatchMapping("/{projectId}")
     public ProjectResponse update(@PathVariable Long projectId, @Valid @RequestBody UpdateProjectRequest request) {
         return projects.update(currentUser.require(), projectId, request);
+    }
+
+    @PatchMapping("/{projectId}/paper-link")
+    public ProjectResponse updatePaperLink(
+            @PathVariable Long projectId,
+            @Valid @RequestBody PaperLinkRequest request
+    ) {
+        return projects.updatePaperLink(currentUser.require(), projectId, request.paperLink());
     }
 
     @PostMapping("/{projectId}/assistants")

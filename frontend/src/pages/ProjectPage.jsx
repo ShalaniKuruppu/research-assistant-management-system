@@ -129,6 +129,18 @@ export default function ProjectPage() {
           </div>
           {project.description ? <p className="lede">{project.description}</p> : null}
           {project.objectives ? <p className="meta">Objectives: {project.objectives}</p> : null}
+          <section className="card">
+            <h2>Overleaf paper</h2>
+            {project.paperLink ? (
+              <p>
+                <a href={project.paperLink} target="_blank" rel="noreferrer">
+                  Open submitted Overleaf paper
+                </a>
+              </p>
+            ) : (
+              <p className="meta">The research assistant has not submitted an Overleaf link yet.</p>
+            )}
+          </section>
 
           <div className="tabs" role="tablist">
             {['assistants', 'tasks', 'reports'].map((name) => (
