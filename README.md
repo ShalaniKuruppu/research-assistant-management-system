@@ -1,6 +1,6 @@
 # Research Assistant Management System
 
-A supervisor uses this system to run research projects and the assistants who work on them. The supervisor creates a project, assigns research assistants, sets tasks, and reviews the weekly report each assistant submits. A research assistant sees only the projects they belong to, updates task progress, and files one weekly report per project.
+A supervisor uses this system to run research projects and the assistants who work on them. A research assistant creates a project under a chosen supervisor, then updates task progress and files one weekly report per project. The supervisor owns the project, can assign more assistants, sets tasks, and reviews weekly reports.
 
 There are two roles. An account is either a supervisor or a research assistant, and that role stays fixed.
 
@@ -8,7 +8,7 @@ There are two roles. An account is either a supervisor or a research assistant, 
 
 **Supervisor**
 
-- Creates and owns projects
+- Owns projects created under them by research assistants
 - Assigns any number of research assistants to a project
 - Creates tasks and assigns each task to an assistant on that project
 - Reads task progress
@@ -16,7 +16,8 @@ There are two roles. An account is either a supervisor or a research assistant, 
 
 **Research assistant**
 
-- Works on the projects a supervisor has assigned
+- Creates projects and chooses the supervising account
+- Works on the projects they create or are assigned to
 - Updates the status and completion of assigned tasks, including blockers
 - Saves a weekly report as a draft, then submits it
 - Reads the supervisor's feedback
@@ -103,7 +104,7 @@ can expand the timestamped previous versions. Apply
 | `/register` | Guest | Create an account. The role is chosen here and stays fixed. Password is 8 to 72 characters. |
 | `/` | Signed in | Dashboard. |
 | `/projects` | Signed in | Projects the caller can see. |
-| `/projects/new` | Supervisor | Create a project. |
+| `/projects/new` | Research assistant | Create a project under a chosen supervisor. |
 | `/projects/:id` | Owner or assigned assistant | Project workspace. |
 
 The supervisor workspace assigns assistants, creates tasks, reads progress, and reviews submitted weekly reports. The assistant workspace updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. A dashboard item opens the matching task or report on that project.

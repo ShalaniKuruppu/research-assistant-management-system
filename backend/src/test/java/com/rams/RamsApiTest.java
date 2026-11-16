@@ -49,11 +49,13 @@ class RamsApiTest {
 
     @Test
     void supervisorAndAssistantCompleteTheWeeklyFlow() throws Exception {
-        String supervisorToken = tokenOf(register(
+        MvcResult supervisorRegistration = register(
                 "Ada Supervisor",
                 "ada@example.com",
                 "SUPERVISOR"
-        ));
+        );
+        String supervisorToken = tokenOf(supervisorRegistration);
+        long supervisorId = userIdOf(supervisorRegistration);
         long assistantId = userIdOf(register(
                 "Grace Assistant",
                 "grace@example.com",
@@ -78,27 +80,22 @@ class RamsApiTest {
                 .andExpect(status().isUnauthorized());
 
         mockMvc.perform(post("/api/projects")
-                        .header("Authorization", "Bearer " + assistantToken)
+                        .header("Authorization", "Bearer " + supervisorToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(projectJson()))
+                        .content(projectJson(supervisorId)))
                 .andExpect(status().isForbidden());
 
         long projectId = idOf(mockMvc.perform(post("/api/projects")
-                        .header("Authorization", "Bearer " + supervisorToken)
+                        .header("Authorization", "Bearer " + assistantToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(projectJson()))
+                        .content(projectJson(supervisorId)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.assistants[0].assistantId").value(assistantId))
                 .andReturn());
 
         mockMvc.perform(get("/api/projects/" + projectId)
                         .header("Authorization", "Bearer " + outsiderToken))
                 .andExpect(status().isNotFound());
-
-        mockMvc.perform(post("/api/projects/" + projectId + "/assistants")
-                        .header("Authorization", "Bearer " + supervisorToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assistantId\":" + assistantId + "}"))
-                .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/projects/" + projectId + "/assistants")
                         .header("Authorization", "Bearer " + supervisorToken)
@@ -291,15 +288,16 @@ class RamsApiTest {
         return id.longValue();
     }
 
-    private static String projectJson() {
+    private static String projectJson(long supervisorId) {
         return """
                 {
                   "title": "Archive study",
                   "description": "Weekly reading group",
                   "startDate": "2026-10-01",
-                  "endDate": "2026-12-01"
+                  "endDate": "2026-12-01",
+                  "supervisorId": %d
                 }
-                """;
+                """.formatted(supervisorId);
     }
 
     private static Path schemaPath() {
