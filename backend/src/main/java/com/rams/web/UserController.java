@@ -2,8 +2,10 @@ package com.rams.web;
 
 import com.rams.domain.UserAccount;
 import com.rams.domain.UserRole;
+import com.rams.service.AssistantDirectoryService;
 import com.rams.service.AuthService;
 import com.rams.service.CurrentUser;
+import com.rams.web.dto.AssistantDtos.AssistantProfileResponse;
 import com.rams.web.dto.AuthDtos.UserResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,10 +21,12 @@ public class UserController {
 
     private final CurrentUser currentUser;
     private final AuthService authService;
+    private final AssistantDirectoryService assistants;
 
-    public UserController(CurrentUser currentUser, AuthService authService) {
+    public UserController(CurrentUser currentUser, AuthService authService, AssistantDirectoryService assistants) {
         this.currentUser = currentUser;
         this.authService = authService;
+        this.assistants = assistants;
     }
 
     @GetMapping("/health")
@@ -51,5 +55,10 @@ public class UserController {
             throw ApiException.badRequest("List supervisors with role=SUPERVISOR");
         }
         throw ApiException.forbidden("You cannot list accounts");
+    }
+
+    @GetMapping("/research-assistants")
+    public List<AssistantProfileResponse> researchAssistants() {
+        return assistants.listForSupervisor(currentUser.require());
     }
 }

@@ -15,5 +15,7 @@ public interface ProjectAssistantRepository extends JpaRepository<ProjectAssista
 
     List<ProjectAssistant> findByProjectIdInOrderByIdAsc(Collection<Long> projectIds);
 
+    List<ProjectAssistant> findByProjectIdInAndActiveTrueOrderByIdAsc(Collection<Long> projectIds);
+
     boolean existsByProjectIdAndAssistantIdAndActiveTrue(Long projectId, Long assistantId);
 }

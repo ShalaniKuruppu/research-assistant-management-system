@@ -30,6 +30,15 @@ public class UserAccount extends Timestamped {
     @Column(nullable = false, columnDefinition = "user_role")
     private UserRole role;
 
+    @Column(length = 40)
+    private String phone;
+
+    @Column(columnDefinition = "TEXT")
+    private String summary;
+
+    @Column(name = "profile_image_url", length = 1000)
+    private String profileImageUrl;
+
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
@@ -67,6 +76,30 @@ public class UserAccount extends Timestamped {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getSummary() {
+        return summary;
+    }
+
+    public void setSummary(String summary) {
+        this.summary = summary;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 
     public boolean isActive() {

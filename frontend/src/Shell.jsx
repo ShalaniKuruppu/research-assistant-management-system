@@ -1,23 +1,81 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { roleLabel, useAuth } from './auth.jsx'
+
+const SIDEBAR_KEY = 'rams.sidebarCollapsed'
 
 export default function Shell({ children }) {
   const { user, signOut } = useAuth()
   const { pathname } = useLocation()
-  const projects = pathname.startsWith('/projects')
+  const projects = pathname === '/projects' || pathname.startsWith('/projects/')
+  const development = pathname.startsWith('/development-projects')
+  const assistants = pathname.startsWith('/research-assistants')
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [collapsed])
 
   return (
-    <div className="shell">
-      <header className="topbar">
-        <Link className="brand" to="/">Research Assistant Management</Link>
-        <div className="who">
-          <Link className={pathname === '/' ? 'nav selected' : 'nav'} to="/">Dashboard</Link>
-          <Link className={projects ? 'nav selected' : 'nav'} to="/projects">Projects</Link>
-          <span>{user.name}</span>
-          <span className="role">{roleLabel(user.role)}</span>
-          <button type="button" onClick={signOut}>Sign out</button>
+    <div className={`shell${collapsed ? ' collapsed' : ''}`}>
+      <aside className="sidebar" aria-label="Main navigation">
+        <div className="sidebar-top">
+          <Link className="brand" to="/" title="Research Assistant Management">
+            {collapsed ? 'RAM' : 'Research Assistant Management'}
+          </Link>
+          <button
+            type="button"
+            className="sidebar-toggle"
+            aria-expanded={!collapsed}
+            aria-controls="sidebar-nav"
+            onClick={() => setCollapsed((value) => !value)}
+          >
+            {collapsed ? '»' : '«'}
+            <span className="sr-only">{collapsed ? 'Expand navigation' : 'Collapse navigation'}</span>
+          </button>
         </div>
-      </header>
+        <nav id="sidebar-nav" className="sidebar-nav">
+          <Link className={pathname === '/' ? 'nav selected' : 'nav'} to="/" title="Dashboard">
+            {collapsed ? 'D' : 'Dashboard'}
+          </Link>
+          <Link className={projects ? 'nav selected' : 'nav'} to="/projects" title="Projects">
+            {collapsed ? 'P' : 'Projects'}
+          </Link>
+          <Link
+            className={development ? 'nav selected' : 'nav'}
+            to="/development-projects"
+            title="Development projects"
+          >
+            {collapsed ? 'DP' : 'Development projects'}
+          </Link>
+          <Link
+            className={assistants ? 'nav selected' : 'nav'}
+            to="/research-assistants"
+            title="Research Assistants"
+          >
+            {collapsed ? 'RA' : 'Research Assistants'}
+          </Link>
+        </nav>
+        <div className="sidebar-user">
+          <span className="sidebar-user-name" title={user.name}>
+            {collapsed ? user.name.slice(0, 1).toUpperCase() : user.name}
+          </span>
+          {!collapsed ? <span className="role">{roleLabel(user.role)}</span> : null}
+          <button type="button" onClick={signOut} title="Sign out">
+            {collapsed ? 'Out' : 'Sign out'}
+          </button>
+        </div>
+      </aside>
       <main className="page wide">{children}</main>
     </div>
   )

@@ -96,6 +96,9 @@ can expand the timestamped previous versions. Apply
 `db/migrations/004_research_plan.sql` and
 `db/migrations/005_research_plan_history.sql` to existing databases.
 
+Research assistant directory cards can store phone, summary, and profile image
+URL. Apply `db/migrations/006_user_profile_fields.sql` to existing databases.
+
 ## Screens
 
 | Path | Who | What |
@@ -106,6 +109,8 @@ can expand the timestamped previous versions. Apply
 | `/projects` | Signed in | Projects the caller can see. |
 | `/projects/new` | Research assistant | Create a project under a chosen supervisor. |
 | `/projects/:id` | Owner or assigned assistant | Project workspace. |
+| `/development-projects` | Signed in | Active projects currently in progress. |
+| `/research-assistants` | Supervisor | Assistant directory with summary, contact, photo, and allocated projects. |
 
 The supervisor workspace assigns assistants, creates tasks, reads progress, and reviews submitted weekly reports. The assistant workspace updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. A dashboard item opens the matching task or report on that project.
 
