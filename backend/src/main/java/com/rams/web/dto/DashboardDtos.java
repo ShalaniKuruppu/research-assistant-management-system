@@ -21,6 +21,12 @@ public final class DashboardDtos {
 
     public record DashboardResponse(
             int projectCount,
+            int ongoingProjectCount,
+            int blockedProjectCount,
+            int reimbursementCount,
+            int overdueProjectCount,
+            int pendingProjectCount,
+            int completedProjectCount,
             int openTaskCount,
             int blockedTaskCount,
             int overdueTaskCount,

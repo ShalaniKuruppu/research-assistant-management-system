@@ -56,8 +56,13 @@ public class ProjectService {
     }
 
     @Transactional
-    public ProjectResponse create(UserAccount supervisor, CreateProjectRequest request) {
-        requireSupervisor(supervisor);
+    public ProjectResponse create(UserAccount assistant, CreateProjectRequest request) {
+        requireResearchAssistant(assistant);
+        UserAccount supervisor = users.findById(request.supervisorId())
+                .orElseThrow(() -> ApiException.badRequest("Choose an active supervisor"));
+        if (supervisor.getRole() != UserRole.SUPERVISOR || !supervisor.isActive()) {
+            throw ApiException.badRequest("Choose an active supervisor");
+        }
         String title = Text.required(request.title(), 200, "Title");
         requireDateOrder(request.startDate(), request.endDate());
         Project project = new Project();
@@ -69,7 +74,14 @@ public class ProjectService {
         project.setEndDate(request.endDate());
         project.setStatus(request.status() == null ? ProjectStatus.PLANNED : request.status());
         projects.save(project);
-        return toResponse(project, supervisor, List.of());
+
+        ProjectAssistant assignment = new ProjectAssistant();
+        assignment.setProjectId(project.getId());
+        assignment.setAssistantId(assistant.getId());
+        assignment.setActive(true);
+        assignments.save(assignment);
+
+        return toResponse(project, supervisor, List.of(toAssignment(assignment, assistant)));
     }
 
     public List<ProjectResponse> list(UserAccount user) {
@@ -309,6 +321,12 @@ public class ProjectService {
     private static void requireSupervisor(UserAccount user) {
         if (user.getRole() != UserRole.SUPERVISOR) {
             throw ApiException.forbidden("Only a supervisor can do that");
+        }
+    }
+
+    private static void requireResearchAssistant(UserAccount user) {
+        if (user.getRole() != UserRole.RESEARCH_ASSISTANT) {
+            throw ApiException.forbidden("Only a research assistant can create a project");
         }
     }
 

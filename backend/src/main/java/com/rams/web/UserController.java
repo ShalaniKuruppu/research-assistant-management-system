@@ -38,12 +38,18 @@ public class UserController {
     @GetMapping("/users")
     public List<UserResponse> list(@RequestParam(required = false) UserRole role) {
         UserAccount user = currentUser.require();
-        if (user.getRole() != UserRole.SUPERVISOR) {
-            throw ApiException.forbidden("Only a supervisor can list accounts");
+        if (user.getRole() == UserRole.SUPERVISOR && role == UserRole.RESEARCH_ASSISTANT) {
+            return authService.listActiveByRole(role);
         }
-        if (role != UserRole.RESEARCH_ASSISTANT) {
+        if (user.getRole() == UserRole.RESEARCH_ASSISTANT && role == UserRole.SUPERVISOR) {
+            return authService.listActiveByRole(role);
+        }
+        if (user.getRole() == UserRole.SUPERVISOR) {
             throw ApiException.badRequest("List research assistants with role=RESEARCH_ASSISTANT");
         }
-        return authService.listActiveByRole(role);
+        if (user.getRole() == UserRole.RESEARCH_ASSISTANT) {
+            throw ApiException.badRequest("List supervisors with role=SUPERVISOR");
+        }
+        throw ApiException.forbidden("You cannot list accounts");
     }
 }

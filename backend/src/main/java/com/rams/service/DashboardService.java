@@ -66,7 +66,7 @@ public class DashboardService {
     public DashboardResponse summarize(UserAccount user) {
         List<ProjectResponse> visible = projects.list(user);
         if (visible.isEmpty()) {
-            return new DashboardResponse(0, 0, 0, 0, 0, 0, 0, List.of(), List.of());
+            return new DashboardResponse(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), List.of());
         }
         List<Long> projectIds = visible.stream().map(ProjectResponse::id).toList();
         boolean supervisor = user.getRole() == UserRole.SUPERVISOR;
@@ -91,6 +91,11 @@ public class DashboardService {
 
         List<ProjectSummary> summaries = new ArrayList<>();
         List<AttentionItem> attention = new ArrayList<>();
+        int ongoingProjectCount = 0;
+        int blockedProjectCount = 0;
+        int overdueProjectCount = 0;
+        int pendingProjectCount = 0;
+        int completedProjectCount = 0;
         int openTaskCount = 0;
         int blockedTaskCount = 0;
         int overdueTaskCount = 0;
@@ -126,6 +131,23 @@ public class DashboardService {
             }
             openTaskCount += open;
             blockedTaskCount += blocked;
+
+            if (project.status() == ProjectStatus.ACTIVE) {
+                ongoingProjectCount++;
+            } else if (project.status() == ProjectStatus.ON_HOLD) {
+                blockedProjectCount++;
+            } else if (project.status() == ProjectStatus.PLANNED) {
+                pendingProjectCount++;
+            } else if (project.status() == ProjectStatus.COMPLETED) {
+                completedProjectCount++;
+            }
+            boolean projectOverdue = project.endDate() != null
+                    && project.endDate().isBefore(today)
+                    && project.status() != ProjectStatus.COMPLETED
+                    && project.status() != ProjectStatus.ARCHIVED;
+            if (projectOverdue) {
+                overdueProjectCount++;
+            }
 
             for (WeeklyReport report : projectReports) {
                 FeedbackOutcome outcome = outcomes.get(report.getId());
@@ -173,6 +195,12 @@ public class DashboardService {
 
         return new DashboardResponse(
                 summaries.size(),
+                ongoingProjectCount,
+                blockedProjectCount,
+                0,
+                overdueProjectCount,
+                pendingProjectCount,
+                completedProjectCount,
                 openTaskCount,
                 blockedTaskCount,
                 overdueTaskCount,

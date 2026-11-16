@@ -32,10 +32,14 @@ export default function DashboardPage() {
   }, [])
 
   const stats = dashboard ? [
-    ['Projects', dashboard.projectCount],
+    ['Total projects', dashboard.projectCount],
+    ['Ongoing projects', dashboard.ongoingProjectCount],
+    ['Blocked projects', dashboard.blockedProjectCount],
+    ['Reimbursements', dashboard.reimbursementCount],
+    ['Overdue projects', dashboard.overdueProjectCount],
+    ['Pending projects', dashboard.pendingProjectCount],
+    ['Completed projects', dashboard.completedProjectCount],
     ['Open tasks', dashboard.openTaskCount],
-    ['Blocked', dashboard.blockedTaskCount],
-    ['Overdue', dashboard.overdueTaskCount],
   ] : []
 
   return (
@@ -50,7 +54,7 @@ export default function DashboardPage() {
               : 'Assigned work, and what to do next.'}
           </p>
         </div>
-        {supervisor ? <Link className="button primary" to="/projects/new">New project</Link> : null}
+        {!supervisor ? <Link className="button primary" to="/projects/new">New project</Link> : null}
       </div>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {loading ? <p className="status-line">Loading the dashboard…</p> : null}
@@ -91,8 +95,8 @@ export default function DashboardPage() {
               {dashboard.projects.length === 0 ? (
                 <p className="lede">
                   {supervisor
-                    ? 'Create a project to assign assistants and tasks.'
-                    : 'A supervisor has not assigned you to a project yet.'}
+                    ? 'Waiting for a research assistant to create a project under you.'
+                    : 'Create a project and choose your supervisor to get started.'}
                 </p>
               ) : null}
               {dashboard.projects.map((project) => (

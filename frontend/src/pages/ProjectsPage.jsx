@@ -26,15 +26,15 @@ export default function ProjectsPage() {
           <p className="eyebrow">Projects</p>
           <h1>{supervisor ? 'Your projects' : 'Assigned projects'}</h1>
         </div>
-        {supervisor ? <Link className="button primary" to="/projects/new">New project</Link> : null}
+        {!supervisor ? <Link className="button primary" to="/projects/new">New project</Link> : null}
       </div>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {loading ? <p className="status-line">Loading projects…</p> : null}
       {!loading && projects.length === 0 ? (
         <p className="lede">
           {supervisor
-            ? 'Create a project, then assign research assistants and tasks.'
-            : 'A supervisor has not assigned you to a project yet.'}
+            ? 'Waiting for a research assistant to create a project under you.'
+            : 'Create a project and choose your supervisor to get started.'}
         </p>
       ) : null}
       {!loading && !supervisor && projects.length > 0 ? (

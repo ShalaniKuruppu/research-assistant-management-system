@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError, api } from '../api.js'
 import { useAuth } from '../auth.jsx'
@@ -9,12 +9,39 @@ export default function NewProjectPage() {
   const navigate = useNavigate()
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
+  const [supervisors, setSupervisors] = useState([])
+  const [loadingSupervisors, setLoadingSupervisors] = useState(true)
 
-  if (user.role !== 'SUPERVISOR') {
+  const assistant = user.role === 'RESEARCH_ASSISTANT'
+
+  useEffect(() => {
+    if (!assistant) {
+      setLoadingSupervisors(false)
+      return
+    }
+    let cancelled = false
+    api('/api/users?role=SUPERVISOR')
+      .then((data) => {
+        if (!cancelled) setSupervisors(data)
+      })
+      .catch((caught) => {
+        if (!cancelled) {
+          setError(caught instanceof ApiError ? caught.message : 'Could not load supervisors')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSupervisors(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [assistant])
+
+  if (!assistant) {
     return (
       <Shell>
         <h1>New project</h1>
-        <p className="lede">Only a supervisor can create a project.</p>
+        <p className="lede">Only a research assistant can create a project.</p>
       </Shell>
     )
   }
@@ -26,6 +53,11 @@ export default function NewProjectPage() {
     const endDate = String(form.get('endDate'))
     if (endDate < startDate) {
       setError('The end date must be on or after the start date')
+      return
+    }
+    const supervisorId = Number(form.get('supervisorId'))
+    if (!supervisorId) {
+      setError('Choose a supervisor')
       return
     }
     setError('')
@@ -40,6 +72,7 @@ export default function NewProjectPage() {
           startDate,
           endDate,
           status: String(form.get('status')),
+          supervisorId,
         },
       })
       navigate(`/projects/${project.id}`, { replace: true })
@@ -68,6 +101,22 @@ export default function NewProjectPage() {
           Objectives
           <textarea name="objectives" rows={3} />
         </label>
+        <label>
+          Supervisor
+          <select name="supervisorId" required disabled={loadingSupervisors || supervisors.length === 0} defaultValue="">
+            <option value="" disabled>
+              {loadingSupervisors ? 'Loading supervisors…' : 'Select a supervisor'}
+            </option>
+            {supervisors.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {!loadingSupervisors && supervisors.length === 0 ? (
+          <p className="meta">No active supervisors are available yet.</p>
+        ) : null}
         <div className="split">
           <label>
             Start date
@@ -88,7 +137,7 @@ export default function NewProjectPage() {
             <option value="ARCHIVED">Archived</option>
           </select>
         </label>
-        <button className="primary" type="submit" disabled={pending}>
+        <button className="primary" type="submit" disabled={pending || loadingSupervisors || supervisors.length === 0}>
           {pending ? 'Creating…' : 'Create project'}
         </button>
       </form>

@@ -20,7 +20,8 @@ public final class ProjectDtos {
             @Size(max = 20000) String objectives,
             @NotNull LocalDate startDate,
             @NotNull LocalDate endDate,
-            ProjectStatus status
+            ProjectStatus status,
+            @NotNull Long supervisorId
     ) {
     }
 
