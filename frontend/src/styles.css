@@ -252,6 +252,47 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   align-items: start;
 }
 
+.attention-section {
+  margin: 0.5rem 0 1.6rem;
+}
+
+.attention-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.attention-block {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+  min-height: 10rem;
+}
+
+.attention-block h3 {
+  margin: 0 0 0.85rem;
+  font-size: 1.15rem;
+}
+
+.attention-empty {
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  min-height: 7rem;
+  text-align: center;
+}
+
+.attention-empty-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.attention-empty .lede {
+  margin: 0;
+}
+
 .tabs { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 1.2rem 0; }
 
 .tab.selected {
@@ -322,7 +363,8 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
 
   .topbar, .who, .page-head, .list-card, .split { flex-wrap: wrap; }
 
-  .split-layout { grid-template-columns: 1fr; }
+  .split-layout,
+  .attention-blocks { grid-template-columns: 1fr; }
 
   .stats { grid-template-columns: 1fr 1fr; }
 }

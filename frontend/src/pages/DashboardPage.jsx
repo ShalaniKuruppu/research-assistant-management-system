@@ -68,59 +68,71 @@ export default function DashboardPage() {
               </article>
             ))}
           </div>
-          <section className="split-layout">
-            <div className="stack">
-              <h2>Needs attention</h2>
-              {dashboard.attention.length === 0 ? (
-                <p className="lede">Nothing is waiting on you.</p>
-              ) : null}
-              {dashboard.attention.map((item) => (
-                <Link className="list-card" key={attentionKey(item)} to={hrefFor(item)}>
-                  <div>
-                    <h2>{item.title}</h2>
-                    <p className="meta">
-                      {item.projectTitle}
-                      {item.detail ? ` · ${item.detail}` : ''}
-                    </p>
-                  </div>
-                  <span className="role">{attentionLabel(item.kind)}</span>
-                </Link>
-              ))}
+          <section className="stack attention-section">
+            <h2>Needs attention</h2>
+            <div className="attention-blocks">
+              <article className="attention-block">
+                <h3>Projects</h3>
+                {dashboard.attention.length === 0 ? (
+                  <p className="lede">Nothing is waiting on you.</p>
+                ) : null}
+                <div className="stack">
+                  {dashboard.attention.map((item) => (
+                    <Link className="list-card" key={attentionKey(item)} to={hrefFor(item)}>
+                      <div>
+                        <h2>{item.title}</h2>
+                        <p className="meta">
+                          {item.projectTitle}
+                          {item.detail ? ` · ${item.detail}` : ''}
+                        </p>
+                      </div>
+                      <span className="role">{attentionLabel(item.kind)}</span>
+                    </Link>
+                  ))}
+                </div>
+              </article>
+              <article className="attention-block">
+                <h3>Reimbursements</h3>
+                <div className="attention-empty" role="status">
+                  <span className="attention-empty-emoji" aria-hidden="true">✅</span>
+                  <p className="lede">No reimbursements need attention.</p>
+                </div>
+              </article>
             </div>
-            <div className="stack">
-              <div className="page-head">
-                <h2>Projects</h2>
-                <Link to="/projects">All projects</Link>
-              </div>
-              {dashboard.projects.length === 0 ? (
-                <p className="lede">
-                  {supervisor
-                    ? 'Waiting for a research assistant to create a project under you.'
-                    : 'Create a project and choose your supervisor to get started.'}
-                </p>
-              ) : null}
-              {dashboard.projects.map((project) => (
-                <Link className="list-card" key={project.id} to={`/projects/${project.id}`}>
-                  <div>
-                    <h2>{project.title}</h2>
-                    <p className="meta">
-                      {project.openTaskCount} open
-                      {project.blockedTaskCount ? ` · ${project.blockedTaskCount} blocked` : ''}
-                      {` · ${project.averageCompletion}% complete`}
-                    </p>
-                    <p className="meta">
-                      {supervisor
-                        ? `${project.assistantCount} ${project.assistantCount === 1 ? 'assistant' : 'assistants'}`
-                        : project.supervisorName}
-                    </p>
-                    <div className="meter" aria-hidden="true">
-                      <span style={{ width: `${project.averageCompletion}%` }} />
-                    </div>
-                  </div>
-                  <span className="role">{label(project.status)}</span>
-                </Link>
-              ))}
+          </section>
+          <section className="stack">
+            <div className="page-head">
+              <h2>Projects</h2>
+              <Link to="/projects">All projects</Link>
             </div>
+            {dashboard.projects.length === 0 ? (
+              <p className="lede">
+                {supervisor
+                  ? 'Waiting for a research assistant to create a project under you.'
+                  : 'Create a project and choose your supervisor to get started.'}
+              </p>
+            ) : null}
+            {dashboard.projects.map((project) => (
+              <Link className="list-card" key={project.id} to={`/projects/${project.id}`}>
+                <div>
+                  <h2>{project.title}</h2>
+                  <p className="meta">
+                    {project.openTaskCount} open
+                    {project.blockedTaskCount ? ` · ${project.blockedTaskCount} blocked` : ''}
+                    {` · ${project.averageCompletion}% complete`}
+                  </p>
+                  <p className="meta">
+                    {supervisor
+                      ? `${project.assistantCount} ${project.assistantCount === 1 ? 'assistant' : 'assistants'}`
+                      : project.supervisorName}
+                  </p>
+                  <div className="meter" aria-hidden="true">
+                    <span style={{ width: `${project.averageCompletion}%` }} />
+                  </div>
+                </div>
+                <span className="role">{label(project.status)}</span>
+              </Link>
+            ))}
           </section>
         </>
       ) : null}
