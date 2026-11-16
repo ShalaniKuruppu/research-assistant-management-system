@@ -9,10 +9,12 @@ import com.rams.web.Text;
 import com.rams.web.dto.AuthDtos.AuthResponse;
 import com.rams.web.dto.AuthDtos.LoginRequest;
 import com.rams.web.dto.AuthDtos.RegisterRequest;
+import com.rams.web.dto.AuthDtos.UpdateProfileRequest;
 import com.rams.web.dto.AuthDtos.UserResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -21,16 +23,24 @@ import java.util.regex.Pattern;
 public class AuthService {
 
     private static final Pattern EMAIL = Pattern.compile("^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$");
+    private static final Pattern PHONE = Pattern.compile("^[+0-9() .\\-]{7,40}$");
 
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final ProfileImageService images;
     private final String dummyHash;
 
-    public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+            UserRepository users,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            ProfileImageService images
+    ) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.images = images;
         this.dummyHash = passwordEncoder.encode("dummy-password");
     }
 
@@ -66,7 +76,45 @@ public class AuthService {
     }
 
     public UserResponse toResponse(UserAccount user) {
-        return new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getRole(), user.isActive());
+        return new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getProfileImageUrl(),
+                user.getRole(),
+                user.isActive()
+        );
+    }
+
+    @Transactional
+    public UserResponse updateProfile(UserAccount user, UpdateProfileRequest request) {
+        if (request.email() != null) {
+            String email = normalizeEmail(request.email());
+            if (!email.equals(user.getEmail()) && users.findByEmail(email).isPresent()) {
+                throw ApiException.conflict("An account with this email already exists");
+            }
+            user.setEmail(email);
+        }
+        if (request.phone() != null) {
+            user.setPhone(normalizePhone(request.phone()));
+        }
+        if (Boolean.TRUE.equals(request.clearProfileImage())) {
+            images.deleteIfOwned(user.getProfileImageUrl());
+            user.setProfileImageUrl(null);
+        }
+        users.save(user);
+        return toResponse(user);
+    }
+
+    @Transactional
+    public UserResponse updateProfilePicture(UserAccount user, MultipartFile file) {
+        String previous = user.getProfileImageUrl();
+        String stored = images.store(user.getId(), file);
+        user.setProfileImageUrl(stored);
+        users.save(user);
+        images.deleteIfOwned(previous);
+        return toResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -82,5 +130,16 @@ public class AuthService {
             throw ApiException.badRequest("Enter a valid email address");
         }
         return normalized;
+    }
+
+    private static String normalizePhone(String phone) {
+        String value = Text.trimToNull(phone);
+        if (value == null) {
+            return null;
+        }
+        if (!PHONE.matcher(value).matches()) {
+            throw ApiException.badRequest("Enter a valid contact number");
+        }
+        return value;
     }
 }

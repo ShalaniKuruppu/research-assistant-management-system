@@ -6,11 +6,19 @@ import com.rams.service.AssistantDirectoryService;
 import com.rams.service.AuthService;
 import com.rams.service.CurrentUser;
 import com.rams.web.dto.AssistantDtos.AssistantProfileResponse;
+import com.rams.web.dto.AuthDtos.UpdateProfileRequest;
 import com.rams.web.dto.AuthDtos.UserResponse;
+import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -37,6 +45,16 @@ public class UserController {
     @GetMapping("/me")
     public UserResponse me() {
         return authService.toResponse(currentUser.require());
+    }
+
+    @PatchMapping("/me")
+    public UserResponse updateMe(@Valid @RequestBody UpdateProfileRequest request) {
+        return authService.updateProfile(currentUser.require(), request);
+    }
+
+    @PostMapping(path = "/me/profile-picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public UserResponse updateProfilePicture(@RequestPart("file") MultipartFile file) {
+        return authService.updateProfilePicture(currentUser.require(), file);
     }
 
     @GetMapping("/users")

@@ -239,9 +239,36 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   align-content: end;
 }
 
+.sidebar-user-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sidebar-avatar {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
 .sidebar-user-name {
   font-weight: 600;
   word-break: break-word;
+}
+
+.profile-picture-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.profile-form input[type="file"] {
+  padding: 0.45rem 0;
 }
 
 .shell.collapsed .sidebar-user-name,

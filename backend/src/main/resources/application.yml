@@ -22,12 +22,18 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
 
 rams:
   jwt:
     # Local default only. Set JWT_SECRET to a private value of at least 32 bytes.
     secret: ${JWT_SECRET:local-dev-only-change-this-secret-to-32-bytes-or-more}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:720}
+  uploads:
+    directory: ${RAMS_UPLOAD_DIR:uploads}
   cors:
     allowed-origins:
       - http://localhost:5173

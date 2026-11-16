@@ -10,6 +10,7 @@ export default function Shell({ children }) {
   const projects = pathname === '/projects' || pathname.startsWith('/projects/')
   const development = pathname.startsWith('/development-projects')
   const assistants = pathname.startsWith('/research-assistants')
+  const profile = pathname.startsWith('/profile')
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_KEY) === '1'
@@ -65,11 +66,19 @@ export default function Shell({ children }) {
           >
             {collapsed ? 'RA' : 'Research Assistants'}
           </Link>
+          <Link className={profile ? 'nav selected' : 'nav'} to="/profile" title="Profile">
+            {collapsed ? 'Me' : 'Profile'}
+          </Link>
         </nav>
         <div className="sidebar-user">
-          <span className="sidebar-user-name" title={user.name}>
-            {collapsed ? user.name.slice(0, 1).toUpperCase() : user.name}
-          </span>
+          <Link className="sidebar-user-link" to="/profile" title="Edit profile">
+            {user.profileImageUrl ? (
+              <img className="sidebar-avatar" src={user.profileImageUrl} alt="" width={36} height={36} />
+            ) : null}
+            <span className="sidebar-user-name">
+              {collapsed ? user.name.slice(0, 1).toUpperCase() : user.name}
+            </span>
+          </Link>
           {!collapsed ? <span className="role">{roleLabel(user.role)}</span> : null}
           <button type="button" onClick={signOut} title="Sign out">
             {collapsed ? 'Out' : 'Sign out'}

@@ -35,6 +35,24 @@ export async function api(path, { method = 'GET', body } = {}) {
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 
+  return readJson(response)
+}
+
+export async function apiFormData(path, formData, { method = 'POST' } = {}) {
+  const headers = { Accept: 'application/json' }
+  const token = getToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const response = await fetch(path, {
+    method,
+    headers,
+    body: formData,
+  })
+  return readJson(response)
+}
+
+async function readJson(response) {
   const text = await response.text()
   let data = null
   try {

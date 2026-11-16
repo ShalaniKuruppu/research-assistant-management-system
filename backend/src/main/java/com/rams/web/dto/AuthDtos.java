@@ -24,7 +24,22 @@ public final class AuthDtos {
     ) {
     }
 
-    public record UserResponse(Long id, String name, String email, UserRole role, boolean active) {
+    public record UserResponse(
+            Long id,
+            String name,
+            String email,
+            String phone,
+            String profileImageUrl,
+            UserRole role,
+            boolean active
+    ) {
+    }
+
+    public record UpdateProfileRequest(
+            @Size(max = 254) String email,
+            @Size(max = 40) String phone,
+            Boolean clearProfileImage
+    ) {
     }
 
     public record AuthResponse(String token, UserResponse user) {

@@ -111,6 +111,7 @@ URL. Apply `db/migrations/006_user_profile_fields.sql` to existing databases.
 | `/projects/:id` | Owner or assigned assistant | Project workspace. |
 | `/development-projects` | Signed in | Active projects currently in progress. |
 | `/research-assistants` | Supervisor | Assistant directory with summary, contact, photo, and allocated projects. |
+| `/profile` | Signed in | Update email, contact number, and profile picture. |
 
 The supervisor workspace assigns assistants, creates tasks, reads progress, and reviews submitted weekly reports. The assistant workspace updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. A dashboard item opens the matching task or report on that project.
 

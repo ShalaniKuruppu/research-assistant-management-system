@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage.jsx'
 import DevelopmentProjectsPage from './pages/DevelopmentProjectsPage.jsx'
 import NewProjectPage from './pages/NewProjectPage.jsx'
 import ProjectPage from './pages/ProjectPage.jsx'
+import ProfilePage from './pages/ProfilePage.jsx'
 import ProjectsPage from './pages/ProjectsPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import ResearchAssistantsPage from './pages/ResearchAssistantsPage.jsx'
@@ -65,6 +66,7 @@ export default function App() {
       <Route path="/projects/:projectId" element={<RequireAuth><ProjectRoute /></RequireAuth>} />
       <Route path="/development-projects" element={<RequireAuth><DevelopmentProjectsPage /></RequireAuth>} />
       <Route path="/research-assistants" element={<RequireAuth><ResearchAssistantsPage /></RequireAuth>} />
+      <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
