@@ -130,4 +130,10 @@ public abstract class PgEnumType<E extends Enum<E>> implements UserType<E> {
             super(ReimbursementStatus.class, "reimbursement_status");
         }
     }
+
+    public static final class DevelopmentProjectStatusType extends PgEnumType<DevelopmentProjectStatus> {
+        public DevelopmentProjectStatusType() {
+            super(DevelopmentProjectStatus.class, "development_project_status");
+        }
+    }
 }

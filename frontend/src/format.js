@@ -6,6 +6,7 @@ const LABELS = {
   ARCHIVED: 'Archived',
   TODO: 'To do',
   IN_PROGRESS: 'In progress',
+
   BLOCKED: 'Blocked',
   DONE: 'Done',
   CANCELLED: 'Cancelled',

@@ -386,6 +386,71 @@ class RamsApiTest {
                 .andExpect(jsonPath("$.status").value("APPROVED"));
     }
 
+    @Test
+    void assistantUpdatesDevelopmentProjectsVisibleToSupervisor() throws Exception {
+        String supervisorToken = tokenOf(register(
+                "Dev Supervisor",
+                "dev-supervisor@example.com",
+                "SUPERVISOR"
+        ));
+        String assistantToken = tokenOf(register(
+                "Dev Assistant",
+                "dev-assistant@example.com",
+                "RESEARCH_ASSISTANT"
+        ));
+
+        mockMvc.perform(post("/api/development-projects")
+                        .header("Authorization", "Bearer " + supervisorToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Supervisor cannot create","status":"PLANNED"}
+                                """))
+                .andExpect(status().isForbidden());
+
+        long developmentId = idOf(mockMvc.perform(post("/api/development-projects")
+                        .header("Authorization", "Bearer " + assistantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Annotation UI",
+                                  "description": "Prototype labeling tool",
+                                  "status": "IN_PROGRESS",
+                                  "progressNote": "Scaffolded the React app"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("Annotation UI"))
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+                .andReturn());
+
+        mockMvc.perform(patch("/api/development-projects/" + developmentId)
+                        .header("Authorization", "Bearer " + assistantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "progressNote": "Added CSV import",
+                                  "repositoryUrl": "https://github.com/example/annotation-ui"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progressNote").value("Added CSV import"))
+                .andExpect(jsonPath("$.repositoryUrl").value("https://github.com/example/annotation-ui"));
+
+        mockMvc.perform(patch("/api/development-projects/" + developmentId)
+                        .header("Authorization", "Bearer " + supervisorToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"progressNote":"Supervisor should not edit"}
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/development-projects")
+                        .header("Authorization", "Bearer " + supervisorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(developmentId))
+                .andExpect(jsonPath("$[0].assistantName").value("Dev Assistant"));
+    }
+
     private MvcResult register(String name, String email, String role) throws Exception {
         return mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
