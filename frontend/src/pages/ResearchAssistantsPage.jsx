@@ -73,12 +73,24 @@ async function loadAssistantDirectory() {
   }))
 }
 
+function sortAssistants(list) {
+  return [...list].sort((left, right) => left.name.localeCompare(right.name))
+}
+
 export default function ResearchAssistantsPage() {
   const { user } = useAuth()
   const supervisor = user.role === 'SUPERVISOR'
   const [assistants, setAssistants] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [formNotice, setFormNotice] = useState('')
+  const [pending, setPending] = useState(false)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
 
   useEffect(() => {
     if (!supervisor) {
@@ -103,6 +115,45 @@ export default function ResearchAssistantsPage() {
     }
   }, [supervisor])
 
+  function resetForm() {
+    setName('')
+    setEmail('')
+    setPassword('')
+    setPhone('')
+    setFormError('')
+  }
+
+  async function onCreate(event) {
+    event.preventDefault()
+    setFormError('')
+    setFormNotice('')
+    if (password.length < 8) {
+      setFormError('Password must be at least 8 characters')
+      return
+    }
+    setPending(true)
+    try {
+      const created = await api('/api/research-assistants', {
+        method: 'POST',
+        body: {
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          phone: phone.trim() || null,
+        },
+      })
+      setAssistants((current) => sortAssistants([...current, created]))
+      resetForm()
+      setShowForm(false)
+      setFormNotice(`${created.name} was added and can sign in with the password you set.`)
+      setError('')
+    } catch (caught) {
+      setFormError(caught instanceof ApiError ? caught.message : 'Could not add the research assistant')
+    } finally {
+      setPending(false)
+    }
+  }
+
   return (
     <Shell>
       <div className="page-head">
@@ -115,13 +166,78 @@ export default function ResearchAssistantsPage() {
               : 'Research assistant accounts are managed by supervisors.'}
           </p>
         </div>
+        {supervisor ? (
+          <button
+            className="button primary"
+            type="button"
+            onClick={() => {
+              setShowForm((open) => !open)
+              setFormError('')
+              setFormNotice('')
+            }}
+          >
+            {showForm ? 'Cancel' : 'Add research assistant'}
+          </button>
+        ) : null}
       </div>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {formNotice ? <p className="form-note" role="status">{formNotice}</p> : null}
+      {supervisor && showForm ? (
+        <form className="card form-card" onSubmit={onCreate}>
+          <h2>New research assistant</h2>
+          <p className="meta">Creates a sign-in account they can use immediately.</p>
+          {formError ? <p className="form-error" role="alert">{formError}</p> : null}
+          <label>
+            Name
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              autoComplete="name"
+              required
+              maxLength={150}
+            />
+          </label>
+          <label>
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              required
+            />
+          </label>
+          <label>
+            Temporary password
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </label>
+          <label>
+            Phone <span className="meta">(optional)</span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              autoComplete="tel"
+              maxLength={40}
+            />
+          </label>
+          <button className="primary" type="submit" disabled={pending}>
+            {pending ? 'Adding…' : 'Add research assistant'}
+          </button>
+        </form>
+      ) : null}
       {loading ? <p className="status-line">Loading research assistants…</p> : null}
       {!supervisor ? (
         <p className="lede">Only a supervisor can browse the research assistant directory.</p>
       ) : null}
-      {!loading && !error && supervisor && assistants.length === 0 ? (
+      {!loading && !error && supervisor && assistants.length === 0 && !showForm ? (
         <p className="lede">No active research assistant accounts exist yet.</p>
       ) : null}
       <div className="stack">

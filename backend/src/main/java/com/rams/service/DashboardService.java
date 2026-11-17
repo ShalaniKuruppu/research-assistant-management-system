@@ -64,9 +64,12 @@ public class DashboardService {
     }
 
     public DashboardResponse summarize(UserAccount user) {
+        int researchAssistantCount = users.findByRoleAndActiveTrueOrderByNameAsc(UserRole.RESEARCH_ASSISTANT).size();
         List<ProjectResponse> visible = projects.list(user);
         if (visible.isEmpty()) {
-            return new DashboardResponse(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), List.of());
+            return new DashboardResponse(
+                    0, 0, 0, 0, 0, 0, 0, researchAssistantCount, 0, 0, 0, 0, 0, 0, List.of(), List.of()
+            );
         }
         List<Long> projectIds = visible.stream().map(ProjectResponse::id).toList();
         boolean supervisor = user.getRole() == UserRole.SUPERVISOR;
@@ -201,6 +204,7 @@ public class DashboardService {
                 overdueProjectCount,
                 pendingProjectCount,
                 completedProjectCount,
+                researchAssistantCount,
                 openTaskCount,
                 blockedTaskCount,
                 overdueTaskCount,

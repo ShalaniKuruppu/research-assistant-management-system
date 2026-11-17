@@ -27,6 +27,7 @@ public final class DashboardDtos {
             int overdueProjectCount,
             int pendingProjectCount,
             int completedProjectCount,
+            int researchAssistantCount,
             int openTaskCount,
             int blockedTaskCount,
             int overdueTaskCount,

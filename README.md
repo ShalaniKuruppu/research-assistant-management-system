@@ -160,7 +160,7 @@ The entity relationship diagram is in [docs/ER Diagram.png](docs/ER%20Diagram.pn
 
 `GET /api/dashboard` returns counts, one summary per visible project, and a list of items that need attention. A supervisor sees owned projects. An assistant sees assigned projects and only their own tasks and reports.
 
-The home screen shows eight counts: total projects, ongoing (`ACTIVE`), blocked (`ON_HOLD`), reimbursements (reserved; currently `0`), overdue projects (end date before today and not completed/archived), pending (`PLANNED`), completed projects, and open tasks. Each project summary shows open tasks, blocked tasks, and average completion of active tasks. Open means the task is active and neither `DONE` nor `CANCELLED`. Overdue tasks mean an open task whose due date is before today.
+The home screen shows eight counts: total projects, ongoing (`ACTIVE`), blocked (`ON_HOLD`), reimbursements (reserved; currently `0`), overdue projects (end date before today and not completed/archived), pending (`PLANNED`), completed projects, and number of active research assistant accounts. Each project summary shows open tasks, blocked tasks, and average completion of active tasks. Open means the task is active and neither `DONE` nor `CANCELLED`. Overdue tasks mean an open task whose due date is before today.
 
 The attention list is ordered as follows. Each role sees the kinds in its column.
 

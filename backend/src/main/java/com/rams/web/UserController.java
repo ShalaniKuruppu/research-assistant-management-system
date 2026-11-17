@@ -6,10 +6,13 @@ import com.rams.service.AssistantDirectoryService;
 import com.rams.service.AuthService;
 import com.rams.service.CurrentUser;
 import com.rams.web.dto.AssistantDtos.AssistantProfileResponse;
+import com.rams.web.dto.AssistantDtos.CreateResearchAssistantRequest;
 import com.rams.web.dto.AuthDtos.UpdateProfileRequest;
 import com.rams.web.dto.AuthDtos.UserResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -78,5 +81,13 @@ public class UserController {
     @GetMapping("/research-assistants")
     public List<AssistantProfileResponse> researchAssistants() {
         return assistants.listForSupervisor(currentUser.require());
+    }
+
+    @PostMapping("/research-assistants")
+    public ResponseEntity<AssistantProfileResponse> createResearchAssistant(
+            @Valid @RequestBody CreateResearchAssistantRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(assistants.createForSupervisor(currentUser.require(), request));
     }
 }

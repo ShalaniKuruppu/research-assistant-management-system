@@ -1,12 +1,22 @@
 package com.rams.web.dto;
 
 import com.rams.domain.ProjectStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
 public final class AssistantDtos {
 
     private AssistantDtos() {
+    }
+
+    public record CreateResearchAssistantRequest(
+            @NotBlank @Size(max = 150) String name,
+            @NotBlank @Size(max = 254) String email,
+            @NotBlank @Size(min = 8, max = 72) String password,
+            @Size(max = 40) String phone
+    ) {
     }
 
     public record AssignedProjectSummary(

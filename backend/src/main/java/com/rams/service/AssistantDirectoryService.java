@@ -10,6 +10,8 @@ import com.rams.repository.UserRepository;
 import com.rams.web.ApiException;
 import com.rams.web.dto.AssistantDtos.AssignedProjectSummary;
 import com.rams.web.dto.AssistantDtos.AssistantProfileResponse;
+import com.rams.web.dto.AssistantDtos.CreateResearchAssistantRequest;
+import com.rams.web.dto.AuthDtos.UserResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,27 +21,28 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@Transactional(readOnly = true)
 public class AssistantDirectoryService {
 
     private final UserRepository users;
     private final ProjectRepository projects;
     private final ProjectAssistantRepository assignments;
+    private final AuthService authService;
 
     public AssistantDirectoryService(
             UserRepository users,
             ProjectRepository projects,
-            ProjectAssistantRepository assignments
+            ProjectAssistantRepository assignments,
+            AuthService authService
     ) {
         this.users = users;
         this.projects = projects;
         this.assignments = assignments;
+        this.authService = authService;
     }
 
+    @Transactional(readOnly = true)
     public List<AssistantProfileResponse> listForSupervisor(UserAccount viewer) {
-        if (viewer.getRole() != UserRole.SUPERVISOR) {
-            throw ApiException.forbidden("Only a supervisor can browse research assistants");
-        }
+        requireSupervisor(viewer);
 
         List<UserAccount> assistants = users.findByRoleAndActiveTrueOrderByNameAsc(UserRole.RESEARCH_ASSISTANT);
         List<Project> owned = projects.findBySupervisorIdOrderByIdAsc(viewer.getId());
@@ -75,5 +78,32 @@ public class AssistantDirectoryService {
             ));
         }
         return profiles;
+    }
+
+    @Transactional
+    public AssistantProfileResponse createForSupervisor(UserAccount viewer, CreateResearchAssistantRequest request) {
+        requireSupervisor(viewer);
+        UserResponse created = authService.createResearchAssistant(
+                request.name(),
+                request.email(),
+                request.password(),
+                request.phone()
+        );
+        return new AssistantProfileResponse(
+                created.id(),
+                created.name(),
+                created.email(),
+                created.phone(),
+                null,
+                created.profileImageUrl(),
+                created.active(),
+                List.of()
+        );
+    }
+
+    private static void requireSupervisor(UserAccount viewer) {
+        if (viewer.getRole() != UserRole.SUPERVISOR) {
+            throw ApiException.forbidden("Only a supervisor can manage research assistants");
+        }
     }
 }

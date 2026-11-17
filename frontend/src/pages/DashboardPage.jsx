@@ -39,7 +39,7 @@ export default function DashboardPage() {
     ['Overdue projects', dashboard.overdueProjectCount],
     ['Pending projects', dashboard.pendingProjectCount],
     ['Completed projects', dashboard.completedProjectCount],
-    ['Open tasks', dashboard.openTaskCount],
+    ['No of research assistants', dashboard.researchAssistantCount],
   ] : []
 
   return (
@@ -94,7 +94,7 @@ export default function DashboardPage() {
               <article className="attention-block">
                 <h3>Reimbursements</h3>
                 <div className="attention-empty" role="status">
-                  <span className="attention-empty-emoji" aria-hidden="true">✅</span>
+                  <span className="attention-empty-emoji" aria-hidden="true"></span>
                   <p className="lede">No reimbursements need attention.</p>
                 </div>
               </article>

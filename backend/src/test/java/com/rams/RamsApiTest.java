@@ -252,6 +252,62 @@ class RamsApiTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void supervisorCanAddResearchAssistants() throws Exception {
+        String supervisorToken = tokenOf(register(
+                "Ada Supervisor",
+                "ada-create@example.com",
+                "SUPERVISOR"
+        ));
+        String assistantToken = tokenOf(register(
+                "Existing Assistant",
+                "existing@example.com",
+                "RESEARCH_ASSISTANT"
+        ));
+
+        mockMvc.perform(post("/api/research-assistants")
+                        .header("Authorization", "Bearer " + assistantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Blocked Create",
+                                  "email": "blocked@example.com",
+                                  "password": "password123"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/research-assistants")
+                        .header("Authorization", "Bearer " + supervisorToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "New Assistant",
+                                  "email": "new-assistant@example.com",
+                                  "password": "password123",
+                                  "phone": "+1 555 0100"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("New Assistant"))
+                .andExpect(jsonPath("$.email").value("new-assistant@example.com"))
+                .andExpect(jsonPath("$.phone").value("+1 555 0100"))
+                .andExpect(jsonPath("$.active").value(true));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"new-assistant@example.com","password":"password123"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.role").value("RESEARCH_ASSISTANT"));
+
+        mockMvc.perform(get("/api/research-assistants")
+                        .header("Authorization", "Bearer " + supervisorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.email=='new-assistant@example.com')]").exists());
+    }
+
     private MvcResult register(String name, String email, String role) throws Exception {
         return mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

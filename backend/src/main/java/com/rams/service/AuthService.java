@@ -46,19 +46,36 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        String email = normalizeEmail(request.email());
-        String name = Text.required(request.name(), 150, "Name");
-        if (users.findByEmail(email).isPresent()) {
+        UserAccount user = createAccount(
+                request.name(),
+                request.email(),
+                request.password(),
+                request.role(),
+                null
+        );
+        return new AuthResponse(jwtService.createToken(user), toResponse(user));
+    }
+
+    @Transactional
+    public UserResponse createResearchAssistant(String name, String email, String password, String phone) {
+        UserAccount user = createAccount(name, email, password, UserRole.RESEARCH_ASSISTANT, phone);
+        return toResponse(user);
+    }
+
+    private UserAccount createAccount(String name, String email, String password, UserRole role, String phone) {
+        String normalizedEmail = normalizeEmail(email);
+        String normalizedName = Text.required(name, 150, "Name");
+        if (users.findByEmail(normalizedEmail).isPresent()) {
             throw ApiException.conflict("An account with this email already exists");
         }
         UserAccount user = new UserAccount();
-        user.setName(name);
-        user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setRole(request.role());
+        user.setName(normalizedName);
+        user.setEmail(normalizedEmail);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(role);
+        user.setPhone(phone == null ? null : normalizePhone(phone));
         user.setActive(true);
-        users.save(user);
-        return new AuthResponse(jwtService.createToken(user), toResponse(user));
+        return users.save(user);
     }
 
     @Transactional(readOnly = true)
