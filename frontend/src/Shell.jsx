@@ -7,6 +7,7 @@ const SIDEBAR_KEY = 'rams.sidebarCollapsed'
 export default function Shell({ children }) {
   const { user, signOut } = useAuth()
   const { pathname } = useLocation()
+  const supervisor = user.role === 'SUPERVISOR'
   const projects = pathname === '/projects' || pathname.startsWith('/projects/')
   const development = pathname.startsWith('/development-projects')
   const assistants = pathname.startsWith('/research-assistants')
@@ -59,13 +60,15 @@ export default function Shell({ children }) {
           >
             {collapsed ? 'DP' : 'Development projects'}
           </Link>
-          <Link
-            className={assistants ? 'nav selected' : 'nav'}
-            to="/research-assistants"
-            title="Research Assistants"
-          >
-            {collapsed ? 'RA' : 'Research Assistants'}
-          </Link>
+          {supervisor ? (
+            <Link
+              className={assistants ? 'nav selected' : 'nav'}
+              to="/research-assistants"
+              title="Research Assistants"
+            >
+              {collapsed ? 'RA' : 'Research Assistants'}
+            </Link>
+          ) : null}
           <Link className={profile ? 'nav selected' : 'nav'} to="/profile" title="Profile">
             {collapsed ? 'Me' : 'Profile'}
           </Link>

@@ -41,6 +41,20 @@ function GuestOnly({ children }) {
   return children
 }
 
+function RequireSupervisor({ children }) {
+  const { user, ready } = useAuth()
+  if (!ready) {
+    return <p className="status-line">Checking your session…</p>
+  }
+  if (!user) {
+    return <Navigate to="/sign-in" replace />
+  }
+  if (user.role !== 'SUPERVISOR') {
+    return <Navigate to="/" replace />
+  }
+  return children
+}
+
 export default function App() {
   return (
     <Routes>
@@ -65,7 +79,14 @@ export default function App() {
       <Route path="/projects/new" element={<RequireAuth><NewProjectPage /></RequireAuth>} />
       <Route path="/projects/:projectId" element={<RequireAuth><ProjectRoute /></RequireAuth>} />
       <Route path="/development-projects" element={<RequireAuth><DevelopmentProjectsPage /></RequireAuth>} />
-      <Route path="/research-assistants" element={<RequireAuth><ResearchAssistantsPage /></RequireAuth>} />
+      <Route
+        path="/research-assistants"
+        element={
+          <RequireSupervisor>
+            <ResearchAssistantsPage />
+          </RequireSupervisor>
+        }
+      />
       <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
