@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ApiError, api } from '../api.js'
+import { ApiError, api, apiFormData, getToken } from '../api.js'
 import { currentWeek, formatWhen, label } from '../format.js'
 import Shell from '../Shell.jsx'
 
@@ -22,48 +22,63 @@ export default function AssistantProjectPage() {
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [reports, setReports] = useState([])
+  const [reimbursements, setReimbursements] = useState([])
   const [researchPlanHistory, setResearchPlanHistory] = useState([])
   const [section, setSection] = useState('tasks')
   const [selectedTask, setSelectedTask] = useState(null)
   const [updates, setUpdates] = useState([])
   const [selectedReport, setSelectedReport] = useState(null)
+  const [selectedReimbursement, setSelectedReimbursement] = useState(null)
   const [feedback, setFeedback] = useState([])
   const [composing, setComposing] = useState(false)
+  const [composingReimbursement, setComposingReimbursement] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(false)
 
   async function load() {
-    const [projectData, taskData, reportData] = await Promise.all([
+    const [projectData, taskData, reportData, reimbursementData] = await Promise.all([
       api(`/api/projects/${projectId}`),
       api(`/api/projects/${projectId}/tasks`),
       api(`/api/projects/${projectId}/reports`),
+      api(`/api/projects/${projectId}/reimbursements`),
     ])
     const history = await api(`/api/projects/${projectId}/research-plan/history`)
-    return { project: projectData, tasks: taskData, reports: reportData, history }
+    return {
+      project: projectData,
+      tasks: taskData,
+      reports: reportData,
+      reimbursements: reimbursementData,
+      history,
+    }
   }
 
   function apply(data) {
     setProject(data.project)
     setTasks(data.tasks)
     setReports(data.reports)
+    setReimbursements(data.reimbursements)
     setResearchPlanHistory(data.history)
     return data
   }
 
   useEffect(() => {
-    const sectionName = searchParams.get('section') === 'reports' ? 'reports' : 'tasks'
+    const requested = searchParams.get('section')
+    const sectionName = requested === 'reports' || requested === 'reimbursements' ? requested : 'tasks'
     const compose = searchParams.get('compose') === '1'
     const taskId = Number(searchParams.get('task'))
     const reportId = Number(searchParams.get('report'))
+    const reimbursementId = Number(searchParams.get('reimbursement'))
     let cancelled = false
     setLoading(true)
     setError('')
     setNotice('')
     setSelectedTask(null)
     setSelectedReport(null)
+    setSelectedReimbursement(null)
     setComposing(false)
+    setComposingReimbursement(false)
     setSection(sectionName)
     load()
       .then((data) => {
@@ -85,6 +100,15 @@ export default function AssistantProjectPage() {
           } else {
             setComposing(true)
           }
+        }
+        const claim = data.reimbursements.find((item) => item.id === reimbursementId)
+        if (claim) {
+          setSelectedReimbursement(claim)
+          setComposingReimbursement(false)
+        } else if (data.reimbursements[0]) {
+          setSelectedReimbursement(data.reimbursements[0])
+        } else {
+          setComposingReimbursement(true)
         }
       })
       .catch((caught) => {
@@ -153,6 +177,12 @@ export default function AssistantProjectPage() {
       if (result?.reportId) {
         setSelectedReport(data.reports.find((report) => report.id === result.reportId) || null)
         setComposing(false)
+      }
+      if (result?.reimbursementId) {
+        setSelectedReimbursement(
+          data.reimbursements.find((claim) => claim.id === result.reimbursementId) || null,
+        )
+        setComposingReimbursement(false)
       }
       setNotice(success)
       return true
@@ -236,6 +266,83 @@ export default function AssistantProjectPage() {
     setComposing(false)
     setError('')
     setNotice('')
+  }
+
+  function openReimbursement(claim) {
+    setSelectedReimbursement(claim)
+    setComposingReimbursement(false)
+    setError('')
+    setNotice('')
+  }
+
+  async function createReimbursement(fields) {
+    return run(
+      async () => {
+        const created = await api(`/api/projects/${projectId}/reimbursements`, {
+          method: 'POST',
+          body: fields,
+        })
+        return { reimbursementId: created.id }
+      },
+      'Reimbursement draft created. Upload a receipt, then submit.',
+    )
+  }
+
+  async function saveReimbursement(fields) {
+    if (!selectedReimbursement) return false
+    return run(
+      async () => {
+        const updated = await api(`/api/reimbursements/${selectedReimbursement.id}`, {
+          method: 'PATCH',
+          body: fields,
+        })
+        return { reimbursementId: updated.id }
+      },
+      'Reimbursement details saved.',
+    )
+  }
+
+  async function uploadReceipt(file) {
+    if (!selectedReimbursement || !file) return false
+    const body = new FormData()
+    body.append('file', file)
+    return run(
+      async () => {
+        const updated = await apiFormData(
+          `/api/reimbursements/${selectedReimbursement.id}/receipts`,
+          body,
+        )
+        return { reimbursementId: updated.id }
+      },
+      'Receipt uploaded.',
+    )
+  }
+
+  async function removeReceipt(receiptId) {
+    if (!selectedReimbursement) return false
+    return run(
+      async () => {
+        const updated = await api(
+          `/api/reimbursements/${selectedReimbursement.id}/receipts/${receiptId}`,
+          { method: 'DELETE' },
+        )
+        return { reimbursementId: updated.id }
+      },
+      'Receipt removed.',
+    )
+  }
+
+  async function submitReimbursement() {
+    if (!selectedReimbursement) return false
+    return run(
+      async () => {
+        const updated = await api(`/api/reimbursements/${selectedReimbursement.id}/submit`, {
+          method: 'POST',
+        })
+        return { reimbursementId: updated.id }
+      },
+      'Reimbursement submitted for supervisor review.',
+    )
   }
 
   return (
@@ -356,6 +463,15 @@ export default function AssistantProjectPage() {
             >
               Weekly reports
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={section === 'reimbursements'}
+              className={section === 'reimbursements' ? 'tab selected' : 'tab'}
+              onClick={() => setSection('reimbursements')}
+            >
+              Reimbursements
+            </button>
           </div>
 
           {section === 'tasks' ? (
@@ -470,6 +586,65 @@ export default function AssistantProjectPage() {
                   />
                 ) : (
                   <p className="meta">Select a weekly report, or start a new one.</p>
+                )}
+              </aside>
+            </section>
+          ) : null}
+
+          {section === 'reimbursements' ? (
+            <section className="split-layout">
+              <div className="stack">
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => {
+                    setComposingReimbursement(true)
+                    setSelectedReimbursement(null)
+                    setError('')
+                    setNotice('')
+                  }}
+                >
+                  New reimbursement
+                </button>
+                {reimbursements.length === 0 ? (
+                  <p className="lede">You have not filed a reimbursement for this project.</p>
+                ) : null}
+                {reimbursements.map((claim) => (
+                  <button
+                    className={
+                      !composingReimbursement && selectedReimbursement?.id === claim.id
+                        ? 'list-card static selected-card'
+                        : 'list-card static'
+                    }
+                    key={claim.id}
+                    type="button"
+                    aria-pressed={!composingReimbursement && selectedReimbursement?.id === claim.id}
+                    onClick={() => openReimbursement(claim)}
+                  >
+                    <div>
+                      <h2>{claim.title}</h2>
+                      <p className="meta">
+                        {claim.currency} {claim.amount} · {claim.expenseDate}
+                        {claim.receipts?.length ? ` · ${claim.receipts.length} receipt${claim.receipts.length === 1 ? '' : 's'}` : ''}
+                      </p>
+                    </div>
+                    <span className="role">{label(claim.status)}</span>
+                  </button>
+                ))}
+              </div>
+              <aside className="card">
+                {composingReimbursement || selectedReimbursement ? (
+                  <ReimbursementPanel
+                    claim={composingReimbursement ? null : selectedReimbursement}
+                    pending={pending}
+                    onCreate={createReimbursement}
+                    onSave={saveReimbursement}
+                    onUpload={uploadReceipt}
+                    onRemoveReceipt={removeReceipt}
+                    onSubmit={submitReimbursement}
+                  />
+                ) : (
+                  <p className="meta">Select a reimbursement, or start a new one.</p>
                 )}
               </aside>
             </section>
@@ -733,4 +908,184 @@ function reportProblem(fields, { includeWeek, submitting, reports, currentId }) 
     return 'Work completed is required once a report has been submitted'
   }
   return ''
+}
+
+function ReimbursementPanel({ claim, pending, onCreate, onSave, onUpload, onRemoveReceipt, onSubmit }) {
+  const editable = !claim || claim.status === 'DRAFT' || claim.status === 'REJECTED'
+  const today = new Date().toISOString().slice(0, 10)
+
+  async function openReceipt(downloadUrl, filename) {
+    const response = await fetch(downloadUrl, {
+      headers: {
+        Accept: '*/*',
+        Authorization: `Bearer ${getToken()}`,
+      },
+    })
+    if (!response.ok) {
+      throw new Error('Could not open the receipt')
+    }
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const opened = window.open(url, '_blank', 'noopener,noreferrer')
+    if (!opened) {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename || 'receipt'
+      link.click()
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
+
+  return (
+    <>
+      <h2>{claim ? claim.title : 'New reimbursement'}</h2>
+      {claim ? (
+        <p className="meta">
+          {claim.currency} {claim.amount} · {claim.expenseDate} · {label(claim.status)}
+        </p>
+      ) : (
+        <p className="meta">Create a draft, upload receipt files, then submit for review.</p>
+      )}
+      {claim?.status === 'SUBMITTED' ? (
+        <p className="form-note">Submitted. Waiting for supervisor review.</p>
+      ) : null}
+      {claim?.status === 'APPROVED' ? (
+        <p className="form-note">This reimbursement was approved.</p>
+      ) : null}
+      {claim?.status === 'REJECTED' ? (
+        <p className="form-note">
+          Rejected{claim.reviewerNote ? `: ${claim.reviewerNote}` : '.'} Update the claim and submit again.
+        </p>
+      ) : null}
+
+      {editable ? (
+        <form
+          className="stack"
+          key={claim ? `${claim.id}-${claim.updatedAt}` : 'new-reimbursement'}
+          onSubmit={(event) => {
+            event.preventDefault()
+            const form = new FormData(event.currentTarget)
+            const fields = {
+              title: String(form.get('title') || '').trim(),
+              description: String(form.get('description') || '').trim(),
+              amount: Number(form.get('amount')),
+              currency: String(form.get('currency') || 'LKR').trim().toUpperCase(),
+              expenseDate: String(form.get('expenseDate') || ''),
+            }
+            if (claim) onSave(fields)
+            else onCreate(fields)
+          }}
+        >
+          <label>
+            Title
+            <input name="title" required maxLength={200} defaultValue={claim?.title || ''} />
+          </label>
+          <label>
+            Description
+            <textarea name="description" rows={3} maxLength={20000} defaultValue={claim?.description || ''} />
+          </label>
+          <div className="split">
+            <label>
+              Amount
+              <input
+                name="amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                defaultValue={claim?.amount ?? ''}
+              />
+            </label>
+            <label>
+              Currency
+              <input name="currency" required maxLength={3} defaultValue={claim?.currency || 'LKR'} />
+            </label>
+          </div>
+          <label>
+            Expense date
+            <input name="expenseDate" type="date" required defaultValue={claim?.expenseDate || today} />
+          </label>
+          <button className="primary" type="submit" disabled={pending}>
+            {pending ? 'Saving…' : claim ? 'Save details' : 'Create draft'}
+          </button>
+        </form>
+      ) : (
+        <div className="stack">
+          {claim.description ? (
+            <div>
+              <p className="meta">Description</p>
+              <p>{claim.description}</p>
+            </div>
+          ) : null}
+          {claim.reviewerNote ? (
+            <div>
+              <p className="meta">Reviewer note</p>
+              <p>{claim.reviewerNote}</p>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {claim ? (
+        <>
+          <h3>Receipts</h3>
+          {(claim.receipts || []).length === 0 ? (
+            <p className="meta">Upload at least one PDF or image receipt before submitting.</p>
+          ) : (
+            <ul className="assistant-projects">
+              {claim.receipts.map((receipt) => (
+                <li key={receipt.id}>
+                  <button
+                    type="button"
+                    className="linkish"
+                    onClick={() => openReceipt(receipt.downloadUrl, receipt.originalFilename).catch(() => {})}
+                  >
+                    {receipt.originalFilename}
+                  </button>
+                  <span className="role">{Math.max(1, Math.round(receipt.fileSize / 1024))} KB</span>
+                  {editable ? (
+                    <button type="button" disabled={pending} onClick={() => onRemoveReceipt(receipt.id)}>
+                      Remove
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          {editable ? (
+            <form
+              className="stack"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const file = event.currentTarget.file.files?.[0]
+                if (file) {
+                  onUpload(file).then((ok) => {
+                    if (ok) event.currentTarget.reset()
+                  })
+                }
+              }}
+            >
+              <label>
+                Upload receipt
+                <input name="file" type="file" accept=".pdf,image/jpeg,image/png,image/webp,image/gif" required />
+              </label>
+              <button type="submit" disabled={pending}>
+                {pending ? 'Uploading…' : 'Upload receipt'}
+              </button>
+            </form>
+          ) : null}
+          {editable ? (
+            <button
+              className="primary"
+              type="button"
+              disabled={pending || !(claim.receipts || []).length}
+              onClick={() => onSubmit()}
+            >
+              {pending ? 'Submitting…' : 'Submit for review'}
+            </button>
+          ) : null}
+        </>
+      ) : null}
+    </>
+  )
 }

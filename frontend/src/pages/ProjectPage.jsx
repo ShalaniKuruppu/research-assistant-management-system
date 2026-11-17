@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ApiError, api } from '../api.js'
+import { ApiError, api, getToken } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { formatWhen, label } from '../format.js'
 import Shell from '../Shell.jsx'
@@ -14,12 +14,14 @@ export default function ProjectPage() {
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [reports, setReports] = useState([])
+  const [reimbursements, setReimbursements] = useState([])
   const [researchPlanHistory, setResearchPlanHistory] = useState([])
   const [candidates, setCandidates] = useState([])
   const [section, setSection] = useState('assistants')
   const [selectedTask, setSelectedTask] = useState(null)
   const [updates, setUpdates] = useState([])
   const [selectedReport, setSelectedReport] = useState(null)
+  const [selectedReimbursement, setSelectedReimbursement] = useState(null)
   const [feedback, setFeedback] = useState([])
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -32,22 +34,29 @@ export default function ProjectPage() {
       api(`/api/projects/${projectId}/tasks`),
       api(`/api/projects/${projectId}/reports`),
       api(`/api/projects/${projectId}/research-plan/history`),
+      api(`/api/projects/${projectId}/reimbursements`),
     ]
     if (supervisor) {
       requests.push(api('/api/users?role=RESEARCH_ASSISTANT'))
     }
-    const [projectData, taskData, reportData, history, people] = await Promise.all(requests)
+    const [projectData, taskData, reportData, history, reimbursementData, people] = await Promise.all(requests)
     setProject(projectData)
     setTasks(taskData)
     setReports(reportData)
     setResearchPlanHistory(history)
+    setReimbursements(reimbursementData)
     setCandidates(people || [])
-    return { tasks: taskData, reports: reportData }
+    return { tasks: taskData, reports: reportData, reimbursements: reimbursementData }
   }
 
   useEffect(() => {
     const requested = searchParams.get('section')
-    if (requested === 'assistants' || requested === 'tasks' || requested === 'reports') {
+    if (
+      requested === 'assistants'
+      || requested === 'tasks'
+      || requested === 'reports'
+      || requested === 'reimbursements'
+    ) {
       setSection(requested)
     }
     let cancelled = false
@@ -57,8 +66,11 @@ export default function ProjectPage() {
         if (cancelled || !data) return
         const task = data.tasks.find((item) => item.id === Number(searchParams.get('task')))
         const report = data.reports.find((item) => item.id === Number(searchParams.get('report')))
+        const claim = data.reimbursements.find((item) => item.id === Number(searchParams.get('reimbursement')))
         if (task) showProgress(task)
         if (report) showReport(report)
+        if (claim) setSelectedReimbursement(claim)
+        else if (data.reimbursements[0]) setSelectedReimbursement(data.reimbursements[0])
       })
       .catch((caught) => {
         if (!cancelled) {
@@ -173,7 +185,7 @@ export default function ProjectPage() {
           </section>
 
           <div className="tabs" role="tablist">
-            {['assistants', 'tasks', 'reports'].map((name) => (
+            {['assistants', 'tasks', 'reports', 'reimbursements'].map((name) => (
               <button
                 key={name}
                 type="button"
@@ -182,7 +194,13 @@ export default function ProjectPage() {
                 className={section === name ? 'tab selected' : 'tab'}
                 onClick={() => setSection(name)}
               >
-                {name === 'assistants' ? 'Assistants' : name === 'tasks' ? 'Tasks' : 'Weekly reports'}
+                {name === 'assistants'
+                  ? 'Assistants'
+                  : name === 'tasks'
+                    ? 'Tasks'
+                    : name === 'reports'
+                      ? 'Weekly reports'
+                      : 'Reimbursements'}
               </button>
             ))}
           </div>
@@ -463,10 +481,128 @@ export default function ProjectPage() {
               </aside>
             </section>
           ) : null}
+
+          {section === 'reimbursements' ? (
+            <section className="split-layout">
+              <div className="stack">
+                {reimbursements.length === 0 ? <p className="lede">No reimbursement claims yet.</p> : null}
+                {reimbursements.map((claim) => (
+                  <button
+                    className={selectedReimbursement?.id === claim.id ? 'list-card static selected-card' : 'list-card static'}
+                    key={claim.id}
+                    type="button"
+                    onClick={() => setSelectedReimbursement(claim)}
+                  >
+                    <div>
+                      <h2>{claim.title}</h2>
+                      <p className="meta">
+                        {names.get(claim.assistantId) || claim.assistantName || 'Assistant'}
+                        {` · ${claim.currency} ${claim.amount} · ${claim.expenseDate}`}
+                      </p>
+                    </div>
+                    <span className="role">{label(claim.status)}</span>
+                  </button>
+                ))}
+              </div>
+              <aside className="card">
+                <h2>Reimbursement</h2>
+                {selectedReimbursement ? (
+                  <>
+                    <p className="meta">
+                      {names.get(selectedReimbursement.assistantId) || selectedReimbursement.assistantName || 'Assistant'}
+                      {` · ${label(selectedReimbursement.status)}`}
+                    </p>
+                    <p><strong>{selectedReimbursement.currency} {selectedReimbursement.amount}</strong> on {selectedReimbursement.expenseDate}</p>
+                    {selectedReimbursement.description ? <p>{selectedReimbursement.description}</p> : null}
+                    <h3>Receipts</h3>
+                    {(selectedReimbursement.receipts || []).length === 0 ? (
+                      <p className="meta">No receipts uploaded.</p>
+                    ) : (
+                      <ul className="assistant-projects">
+                        {selectedReimbursement.receipts.map((receipt) => (
+                          <li key={receipt.id}>
+                            <button
+                              type="button"
+                              className="linkish"
+                              onClick={() => openReceiptFile(receipt.downloadUrl, receipt.originalFilename)}
+                            >
+                              {receipt.originalFilename}
+                            </button>
+                            <span className="role">{Math.max(1, Math.round(receipt.fileSize / 1024))} KB</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {selectedReimbursement.reviewerNote ? (
+                      <p className="meta">Reviewer note: {selectedReimbursement.reviewerNote}</p>
+                    ) : null}
+                    {supervisor && selectedReimbursement.status === 'SUBMITTED' ? (
+                      <form
+                        className="stack"
+                        onSubmit={(event) => {
+                          event.preventDefault()
+                          const form = new FormData(event.currentTarget)
+                          const claimId = selectedReimbursement.id
+                          event.currentTarget.reset()
+                          run(async () => {
+                            const updated = await api(`/api/reimbursements/${claimId}/review`, {
+                              method: 'POST',
+                              body: {
+                                status: String(form.get('status')),
+                                reviewerNote: String(form.get('reviewerNote') || '').trim(),
+                              },
+                            })
+                            const fresh = await api(`/api/projects/${project.id}/reimbursements`)
+                            setReimbursements(fresh)
+                            setSelectedReimbursement(fresh.find((item) => item.id === updated.id) || updated)
+                          }, 'Reimbursement review saved.')
+                        }}
+                      >
+                        <label>
+                          Decision
+                          <select name="status" defaultValue="APPROVED">
+                            <option value="APPROVED">Approved</option>
+                            <option value="REJECTED">Rejected</option>
+                          </select>
+                        </label>
+                        <label>
+                          Note
+                          <textarea name="reviewerNote" rows={3} />
+                        </label>
+                        <button className="primary" type="submit" disabled={pending}>Save review</button>
+                      </form>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="meta">Select a reimbursement to review it.</p>
+                )}
+              </aside>
+            </section>
+          ) : null}
         </>
       ) : null}
     </Shell>
   )
+}
+
+async function openReceiptFile(downloadUrl, filename) {
+  const response = await fetch(downloadUrl, {
+    headers: {
+      Accept: '*/*',
+      Authorization: `Bearer ${getToken()}`,
+    },
+  })
+  if (!response.ok) return
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const opened = window.open(url, '_blank', 'noopener,noreferrer')
+  if (!opened) {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename || 'receipt'
+    link.click()
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 function ReportBody({ report }) {

@@ -69,7 +69,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/health", "/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/uploads/profiles/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> write(

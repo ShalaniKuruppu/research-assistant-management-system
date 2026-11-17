@@ -124,4 +124,10 @@ public abstract class PgEnumType<E extends Enum<E>> implements UserType<E> {
             super(FeedbackOutcome.class, "feedback_outcome");
         }
     }
+
+    public static final class ReimbursementStatusType extends PgEnumType<ReimbursementStatus> {
+        public ReimbursementStatusType() {
+            super(ReimbursementStatus.class, "reimbursement_status");
+        }
+    }
 }

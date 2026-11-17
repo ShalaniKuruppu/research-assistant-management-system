@@ -496,6 +496,17 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
 
 .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
+button.linkish {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  padding: 0;
+  border-radius: 0;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
 .meter {
   margin-top: 0.55rem;
   height: 0.4rem;

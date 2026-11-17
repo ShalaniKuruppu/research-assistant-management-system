@@ -12,7 +12,9 @@ public final class DashboardDtos {
 
     public enum AttentionKind {
         REVIEW,
+        REIMBURSEMENT_REVIEW,
         REVISION,
+        REIMBURSEMENT_REJECTED,
         BLOCKED,
         OVERDUE,
         DRAFT,
@@ -59,6 +61,7 @@ public final class DashboardDtos {
             String projectTitle,
             Long taskId,
             Long reportId,
+            Long reimbursementId,
             String title,
             String detail
     ) {

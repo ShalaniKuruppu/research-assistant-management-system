@@ -42,6 +42,13 @@ export default function DashboardPage() {
     ['No of research assistants', dashboard.researchAssistantCount],
   ] : []
 
+  const projectAttention = dashboard
+    ? dashboard.attention.filter((item) => !String(item.kind || '').startsWith('REIMBURSEMENT_'))
+    : []
+  const reimbursementAttention = dashboard
+    ? dashboard.attention.filter((item) => String(item.kind || '').startsWith('REIMBURSEMENT_'))
+    : []
+
   return (
     <Shell>
       <div className="page-head">
@@ -73,11 +80,11 @@ export default function DashboardPage() {
             <div className="attention-blocks">
               <article className="attention-block">
                 <h3>Projects</h3>
-                {dashboard.attention.length === 0 ? (
+                {projectAttention.length === 0 ? (
                   <p className="lede">Nothing is waiting on you.</p>
                 ) : null}
                 <div className="stack">
-                  {dashboard.attention.map((item) => (
+                  {projectAttention.map((item) => (
                     <Link className="list-card" key={attentionKey(item)} to={hrefFor(item)}>
                       <div>
                         <h2>{item.title}</h2>
@@ -93,10 +100,27 @@ export default function DashboardPage() {
               </article>
               <article className="attention-block">
                 <h3>Reimbursements</h3>
-                <div className="attention-empty" role="status">
-                  <span className="attention-empty-emoji" aria-hidden="true"></span>
-                  <p className="lede">No reimbursements need attention.</p>
-                </div>
+                {reimbursementAttention.length === 0 ? (
+                  <div className="attention-empty" role="status">
+                    <span className="attention-empty-emoji" aria-hidden="true"></span>
+                    <p className="lede">No reimbursements need attention.</p>
+                  </div>
+                ) : (
+                  <div className="stack">
+                    {reimbursementAttention.map((item) => (
+                      <Link className="list-card" key={attentionKey(item)} to={hrefFor(item)}>
+                        <div>
+                          <h2>{item.title}</h2>
+                          <p className="meta">
+                            {item.projectTitle}
+                            {item.detail ? ` · ${item.detail}` : ''}
+                          </p>
+                        </div>
+                        <span className="role">{attentionLabel(item.kind)}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </article>
             </div>
           </section>
@@ -141,7 +165,14 @@ export default function DashboardPage() {
 }
 
 function attentionKey(item) {
-  return [item.kind, item.projectId, item.taskId || 0, item.reportId || 0, item.title].join('-')
+  return [
+    item.kind,
+    item.projectId,
+    item.taskId || 0,
+    item.reportId || 0,
+    item.reimbursementId || 0,
+    item.title,
+  ].join('-')
 }
 
 function hrefFor(item) {
@@ -149,6 +180,9 @@ function hrefFor(item) {
   if (item.kind === 'MISSING_REPORT') {
     params.set('section', 'reports')
     params.set('compose', '1')
+  } else if (item.kind === 'REIMBURSEMENT_REVIEW' || item.kind === 'REIMBURSEMENT_REJECTED') {
+    params.set('section', 'reimbursements')
+    if (item.reimbursementId) params.set('reimbursement', String(item.reimbursementId))
   } else if (item.taskId) {
     params.set('section', 'tasks')
     params.set('task', String(item.taskId))
@@ -164,5 +198,7 @@ function attentionLabel(kind) {
   if (kind === 'REVISION') return 'Needs revision'
   if (kind === 'OVERDUE') return 'Overdue'
   if (kind === 'MISSING_REPORT') return 'Report due'
+  if (kind === 'REIMBURSEMENT_REVIEW') return 'Needs review'
+  if (kind === 'REIMBURSEMENT_REJECTED') return 'Rejected'
   return label(kind)
 }

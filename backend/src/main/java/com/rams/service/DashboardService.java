@@ -2,6 +2,8 @@ package com.rams.service;
 
 import com.rams.domain.FeedbackOutcome;
 import com.rams.domain.ProjectStatus;
+import com.rams.domain.Reimbursement;
+import com.rams.domain.ReimbursementStatus;
 import com.rams.domain.ReportFeedback;
 import com.rams.domain.ReportStatus;
 import com.rams.domain.Task;
@@ -36,7 +38,9 @@ public class DashboardService {
 
     private static final List<AttentionKind> ATTENTION_ORDER = List.of(
             AttentionKind.REVIEW,
+            AttentionKind.REIMBURSEMENT_REVIEW,
             AttentionKind.REVISION,
+            AttentionKind.REIMBURSEMENT_REJECTED,
             AttentionKind.BLOCKED,
             AttentionKind.OVERDUE,
             AttentionKind.DRAFT,
@@ -48,19 +52,22 @@ public class DashboardService {
     private final WeeklyReportRepository reports;
     private final ReportFeedbackRepository feedback;
     private final UserRepository users;
+    private final ReimbursementService reimbursements;
 
     public DashboardService(
             ProjectService projects,
             TaskRepository tasks,
             WeeklyReportRepository reports,
             ReportFeedbackRepository feedback,
-            UserRepository users
+            UserRepository users,
+            ReimbursementService reimbursements
     ) {
         this.projects = projects;
         this.tasks = tasks;
         this.reports = reports;
         this.feedback = feedback;
         this.users = users;
+        this.reimbursements = reimbursements;
     }
 
     public DashboardResponse summarize(UserAccount user) {
@@ -79,8 +86,9 @@ public class DashboardService {
         List<WeeklyReport> reportRows = supervisor
                 ? reports.findByProjectIdIn(projectIds)
                 : reports.findByProjectIdInAndAssistantId(projectIds, user.getId());
+        List<Reimbursement> reimbursementRows = reimbursements.listVisibleClaims(user, projectIds);
         Map<Long, FeedbackOutcome> outcomes = latestOutcomes(reportRows);
-        Map<Long, String> names = namesFor(taskRows, reportRows);
+        Map<Long, String> names = namesFor(taskRows, reportRows, reimbursementRows);
         LocalDate today = LocalDate.now();
 
         Map<Long, List<Task>> tasksByProject = new HashMap<>();
@@ -91,6 +99,10 @@ public class DashboardService {
         for (WeeklyReport report : reportRows) {
             reportsByProject.computeIfAbsent(report.getProjectId(), ignored -> new ArrayList<>()).add(report);
         }
+        Map<Long, List<Reimbursement>> reimbursementsByProject = new HashMap<>();
+        for (Reimbursement claim : reimbursementRows) {
+            reimbursementsByProject.computeIfAbsent(claim.getProjectId(), ignored -> new ArrayList<>()).add(claim);
+        }
 
         List<ProjectSummary> summaries = new ArrayList<>();
         List<AttentionItem> attention = new ArrayList<>();
@@ -99,6 +111,7 @@ public class DashboardService {
         int overdueProjectCount = 0;
         int pendingProjectCount = 0;
         int completedProjectCount = 0;
+        int reimbursementCount = reimbursementRows.size();
         int openTaskCount = 0;
         int blockedTaskCount = 0;
         int overdueTaskCount = 0;
@@ -175,6 +188,23 @@ public class DashboardService {
             if (project.status() == ProjectStatus.ACTIVE) {
                 attention.addAll(missingReports(project, projectReports, names, supervisor, today));
             }
+            for (Reimbursement claim : reimbursementsByProject.getOrDefault(project.id(), List.of())) {
+                if (supervisor && claim.getStatus() == ReimbursementStatus.SUBMITTED) {
+                    attention.add(reimbursementItem(
+                            AttentionKind.REIMBURSEMENT_REVIEW,
+                            project,
+                            claim,
+                            names
+                    ));
+                } else if (!supervisor && claim.getStatus() == ReimbursementStatus.REJECTED) {
+                    attention.add(reimbursementItem(
+                            AttentionKind.REIMBURSEMENT_REJECTED,
+                            project,
+                            claim,
+                            names
+                    ));
+                }
+            }
             int assistants = (int) project.assistants().stream().filter(assistant -> assistant.active()).count();
             int average = activeCount == 0 ? 0 : Math.round(completionTotal / (float) activeCount);
             summaries.add(new ProjectSummary(
@@ -200,7 +230,7 @@ public class DashboardService {
                 summaries.size(),
                 ongoingProjectCount,
                 blockedProjectCount,
-                0,
+                reimbursementCount,
                 overdueProjectCount,
                 pendingProjectCount,
                 completedProjectCount,
@@ -228,10 +258,15 @@ public class DashboardService {
         return outcomes;
     }
 
-    private Map<Long, String> namesFor(List<Task> taskRows, List<WeeklyReport> reportRows) {
+    private Map<Long, String> namesFor(
+            List<Task> taskRows,
+            List<WeeklyReport> reportRows,
+            List<Reimbursement> reimbursementRows
+    ) {
         Set<Long> ids = new HashSet<>();
         taskRows.forEach(task -> ids.add(task.getAssignedTo()));
         reportRows.forEach(report -> ids.add(report.getAssistantId()));
+        reimbursementRows.forEach(claim -> ids.add(claim.getAssistantId()));
         Map<Long, String> names = new HashMap<>();
         if (ids.isEmpty()) {
             return names;
@@ -260,6 +295,7 @@ public class DashboardService {
                                 project.title(),
                                 null,
                                 null,
+                                null,
                                 name + " has no report this week",
                                 "No report covers today"
                         ));
@@ -271,6 +307,7 @@ public class DashboardService {
                     AttentionKind.MISSING_REPORT,
                     project.id(),
                     project.title(),
+                    null,
                     null,
                     null,
                     "File this week's report",
@@ -297,7 +334,7 @@ public class DashboardService {
         if (supervisor) {
             detail = detail + " · " + names.getOrDefault(task.getAssignedTo(), "Assistant");
         }
-        return new AttentionItem(kind, project.id(), project.title(), task.getId(), null, task.getTitle(), detail);
+        return new AttentionItem(kind, project.id(), project.title(), task.getId(), null, null, task.getTitle(), detail);
     }
 
     private static AttentionItem reportItem(
@@ -310,6 +347,28 @@ public class DashboardService {
         String title = kind == AttentionKind.REVIEW
                 ? names.getOrDefault(report.getAssistantId(), "Assistant") + "'s weekly report"
                 : "Weekly report";
-        return new AttentionItem(kind, project.id(), project.title(), null, report.getId(), title, week);
+        return new AttentionItem(kind, project.id(), project.title(), null, report.getId(), null, title, week);
+    }
+
+    private static AttentionItem reimbursementItem(
+            AttentionKind kind,
+            ProjectResponse project,
+            Reimbursement claim,
+            Map<Long, String> names
+    ) {
+        String detail = claim.getCurrency() + " " + claim.getAmount() + " · " + claim.getExpenseDate();
+        String title = kind == AttentionKind.REIMBURSEMENT_REVIEW
+                ? names.getOrDefault(claim.getAssistantId(), "Assistant") + ": " + claim.getTitle()
+                : claim.getTitle();
+        return new AttentionItem(
+                kind,
+                project.id(),
+                project.title(),
+                null,
+                null,
+                claim.getId(),
+                title,
+                detail
+        );
     }
 }

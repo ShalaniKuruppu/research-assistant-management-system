@@ -18,7 +18,10 @@ import org.testcontainers.utility.MountableFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.springframework.mock.web.MockMultipartFile;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -306,6 +309,81 @@ class RamsApiTest {
                         .header("Authorization", "Bearer " + supervisorToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.email=='new-assistant@example.com')]").exists());
+    }
+
+    @Test
+    void assistantCanUploadReimbursementReceipts() throws Exception {
+        MvcResult supervisorRegistration = register(
+                "Reimb Supervisor",
+                "reimb-supervisor@example.com",
+                "SUPERVISOR"
+        );
+        String supervisorToken = tokenOf(supervisorRegistration);
+        long supervisorId = userIdOf(supervisorRegistration);
+        String assistantToken = tokenOf(register(
+                "Reimb Assistant",
+                "reimb-assistant@example.com",
+                "RESEARCH_ASSISTANT"
+        ));
+
+        long projectId = idOf(mockMvc.perform(post("/api/projects")
+                        .header("Authorization", "Bearer " + assistantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(projectJson(supervisorId)))
+                .andExpect(status().isCreated())
+                .andReturn());
+
+        long claimId = idOf(mockMvc.perform(post("/api/projects/" + projectId + "/reimbursements")
+                        .header("Authorization", "Bearer " + assistantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Conference travel",
+                                  "description": "Train ticket",
+                                  "amount": 1250.50,
+                                  "currency": "LKR",
+                                  "expenseDate": "2026-11-10"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andReturn());
+
+        mockMvc.perform(post("/api/reimbursements/" + claimId + "/submit")
+                        .header("Authorization", "Bearer " + assistantToken))
+                .andExpect(status().isBadRequest());
+
+        MockMultipartFile receipt = new MockMultipartFile(
+                "file",
+                "ticket.pdf",
+                "application/pdf",
+                "%PDF-1.4 reimbursement".getBytes()
+        );
+        mockMvc.perform(multipart("/api/reimbursements/" + claimId + "/receipts")
+                        .file(receipt)
+                        .header("Authorization", "Bearer " + assistantToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.receipts[0].originalFilename").value("ticket.pdf"));
+
+        mockMvc.perform(post("/api/reimbursements/" + claimId + "/submit")
+                        .header("Authorization", "Bearer " + assistantToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUBMITTED"));
+
+        mockMvc.perform(get("/api/dashboard")
+                        .header("Authorization", "Bearer " + supervisorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reimbursementCount").value(1))
+                .andExpect(jsonPath("$.attention[?(@.kind=='REIMBURSEMENT_REVIEW')]").exists());
+
+        mockMvc.perform(post("/api/reimbursements/" + claimId + "/review")
+                        .header("Authorization", "Bearer " + supervisorToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"APPROVED","reviewerNote":"Looks good"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
     }
 
     private MvcResult register(String name, String email, String role) throws Exception {

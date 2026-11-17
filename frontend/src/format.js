@@ -17,6 +17,9 @@ const LABELS = {
   REVIEWED: 'Reviewed',
   APPROVED: 'Approved',
   NEEDS_REVISION: 'Needs revision',
+  REJECTED: 'Rejected',
+  REIMBURSEMENT_REVIEW: 'Reimbursement review',
+  REIMBURSEMENT_REJECTED: 'Reimbursement rejected',
 }
 
 export function label(value) {
