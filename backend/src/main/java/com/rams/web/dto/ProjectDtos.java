@@ -70,6 +70,8 @@ public final class ProjectDtos {
             Long id,
             Long supervisorId,
             String supervisorName,
+            Long createdBy,
+            String createdByName,
             String title,
             String description,
             String objectives,

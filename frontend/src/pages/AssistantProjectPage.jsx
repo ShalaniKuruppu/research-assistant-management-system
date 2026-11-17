@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, api, apiFormData, getToken } from '../api.js'
+import { useAuth } from '../auth.jsx'
 import { currentWeek, formatWhen, label } from '../format.js'
 import Shell from '../Shell.jsx'
 
@@ -19,11 +20,13 @@ export default function AssistantProjectPage() {
   const { projectId } = useParams()
   const [searchParams] = useSearchParams()
   const query = searchParams.toString()
+  const { user } = useAuth()
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [reports, setReports] = useState([])
   const [reimbursements, setReimbursements] = useState([])
   const [researchPlanHistory, setResearchPlanHistory] = useState([])
+  const [candidates, setCandidates] = useState([])
   const [section, setSection] = useState('tasks')
   const [selectedTask, setSelectedTask] = useState(null)
   const [updates, setUpdates] = useState([])
@@ -45,12 +48,17 @@ export default function AssistantProjectPage() {
       api(`/api/projects/${projectId}/reimbursements`),
     ])
     const history = await api(`/api/projects/${projectId}/research-plan/history`)
+    let people = []
+    if (projectData.createdBy === user.id) {
+      people = await api('/api/users?role=RESEARCH_ASSISTANT')
+    }
     return {
       project: projectData,
       tasks: taskData,
       reports: reportData,
       reimbursements: reimbursementData,
       history,
+      candidates: people,
     }
   }
 
@@ -60,12 +68,15 @@ export default function AssistantProjectPage() {
     setReports(data.reports)
     setReimbursements(data.reimbursements)
     setResearchPlanHistory(data.history)
+    setCandidates(data.candidates || [])
     return data
   }
 
   useEffect(() => {
     const requested = searchParams.get('section')
-    const sectionName = requested === 'reports' || requested === 'reimbursements' ? requested : 'tasks'
+    const sectionName = requested === 'assistants' || requested === 'reports' || requested === 'reimbursements'
+      ? requested
+      : 'tasks'
     const compose = searchParams.get('compose') === '1'
     const taskId = Number(searchParams.get('task'))
     const reportId = Number(searchParams.get('report'))
@@ -345,6 +356,10 @@ export default function AssistantProjectPage() {
     )
   }
 
+  const isCreator = Boolean(project && user && project.createdBy === user.id)
+  const assignedIds = new Set((project?.assistants || []).filter((row) => row.active).map((row) => row.assistantId))
+  const assignableCandidates = candidates.filter((person) => !assignedIds.has(person.id) && person.id !== project?.supervisorId)
+
   return (
     <Shell>
       <p className="eyebrow"><Link to="/projects">Assigned projects</Link></p>
@@ -448,6 +463,15 @@ export default function AssistantProjectPage() {
             <button
               type="button"
               role="tab"
+              aria-selected={section === 'assistants'}
+              className={section === 'assistants' ? 'tab selected' : 'tab'}
+              onClick={() => setSection('assistants')}
+            >
+              Assistants
+            </button>
+            <button
+              type="button"
+              role="tab"
               aria-selected={section === 'tasks'}
               className={section === 'tasks' ? 'tab selected' : 'tab'}
               onClick={() => setSection('tasks')}
@@ -473,6 +497,80 @@ export default function AssistantProjectPage() {
               Reimbursements
             </button>
           </div>
+
+          {section === 'assistants' ? (
+            <section className="stack">
+              {isCreator ? (
+                <form
+                  className="card"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    const assistantId = Number(new FormData(event.currentTarget).get('assistantId'))
+                    event.currentTarget.reset()
+                    run(
+                      () => api(`/api/projects/${project.id}/assistants`, {
+                        method: 'POST',
+                        body: { assistantId },
+                      }),
+                      'Research assistant assigned.',
+                    )
+                  }}
+                >
+                  <h2>Add a research assistant</h2>
+                  <p className="meta">Only you can add research assistants to this project because you created it.</p>
+                  {assignableCandidates.length === 0 ? (
+                    <p className="meta">No other active research assistant accounts are available to add.</p>
+                  ) : (
+                    <label>
+                      Research assistant
+                      <select name="assistantId" required defaultValue="">
+                        <option value="" disabled>Choose an assistant</option>
+                        {assignableCandidates.map((person) => (
+                          <option key={person.id} value={person.id}>{person.name} · {person.email}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <button className="primary" type="submit" disabled={pending || assignableCandidates.length === 0}>
+                    Add assistant
+                  </button>
+                </form>
+              ) : (
+                <p className="meta">
+                  Only {project.createdByName || 'the research assistant who created this project'} can add assistants here.
+                </p>
+              )}
+              {(project.assistants || []).length === 0 ? (
+                <p className="lede">No one is assigned to this project yet.</p>
+              ) : null}
+              {(project.assistants || []).map((assistant) => (
+                <article className="list-card static" key={assistant.id}>
+                  <div>
+                    <h2>{assistant.name}</h2>
+                    <p className="meta">
+                      {assistant.email} · {assistant.active ? 'Active' : 'Removed'}
+                      {assistant.assistantId === project.createdBy ? ' · Creator' : ''}
+                    </p>
+                  </div>
+                  {isCreator && assistant.active && assistant.assistantId !== project.createdBy ? (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => run(
+                        () => api(`/api/projects/${project.id}/assistants/${assistant.assistantId}`, {
+                          method: 'PATCH',
+                          body: { active: false },
+                        }),
+                        'Assignment removed.',
+                      )}
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </article>
+              ))}
+            </section>
+          ) : null}
 
           {section === 'tasks' ? (
             <section className="split-layout">

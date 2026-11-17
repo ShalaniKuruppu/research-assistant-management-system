@@ -144,6 +144,38 @@ BEGIN
 END;
 $$;
 
+CREATE FUNCTION enforce_project_creator()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' AND NEW.created_by IS NOT DISTINCT FROM OLD.created_by THEN
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'UPDATE' AND NEW.created_by IS DISTINCT FROM OLD.created_by THEN
+        RAISE EXCEPTION 'project created_by cannot be changed';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM users
+        WHERE user_id = NEW.created_by
+          AND role = 'RESEARCH_ASSISTANT'
+          AND is_active
+    ) THEN
+        RAISE EXCEPTION 'created_by % must be an active research assistant', NEW.created_by;
+    END IF;
+
+    IF NEW.created_by = NEW.supervisor_id THEN
+        RAISE EXCEPTION 'the project creator cannot also be the project supervisor';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
 CREATE FUNCTION enforce_project_assistant_member()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -412,6 +444,7 @@ EXECUTE FUNCTION reject_role_change();
 CREATE TABLE projects (
     project_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     supervisor_id BIGINT NOT NULL REFERENCES users (user_id) ON DELETE RESTRICT,
+    created_by    BIGINT NOT NULL REFERENCES users (user_id) ON DELETE RESTRICT,
     title         VARCHAR(200) NOT NULL,
     description   TEXT,
     objectives    TEXT,
@@ -423,7 +456,8 @@ CREATE TABLE projects (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT projects_title_not_blank CHECK (length(btrim(title)) > 0),
-    CONSTRAINT projects_dates_ordered CHECK (end_date >= start_date)
+    CONSTRAINT projects_dates_ordered CHECK (end_date >= start_date),
+    CONSTRAINT projects_creator_not_supervisor CHECK (created_by <> supervisor_id)
 );
 
 CREATE TRIGGER projects_set_updated_at
@@ -435,6 +469,11 @@ CREATE TRIGGER projects_enforce_supervisor
 BEFORE INSERT OR UPDATE ON projects
 FOR EACH ROW
 EXECUTE FUNCTION enforce_project_supervisor();
+
+CREATE TRIGGER projects_enforce_creator
+BEFORE INSERT OR UPDATE ON projects
+FOR EACH ROW
+EXECUTE FUNCTION enforce_project_creator();
 
 CREATE TABLE research_plan_versions (
     version_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -454,7 +493,7 @@ CREATE TABLE project_assistants (
 );
 
 COMMENT ON TABLE project_assistants IS
-    'One project has many research assistants. Each row is one assistant assigned to that project by its supervisor. The same assistant appears once per project.';
+    'One project has many research assistants. Each row is one assistant assigned to that project by its creating research assistant. The same assistant appears once per project.';
 
 CREATE TRIGGER project_assistants_enforce_member
 BEFORE INSERT OR UPDATE ON project_assistants

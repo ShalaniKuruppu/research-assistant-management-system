@@ -65,6 +65,12 @@ class RamsApiTest {
                 "RESEARCH_ASSISTANT"
         ));
         String assistantToken = login("grace@example.com");
+        long peerAssistantId = userIdOf(register(
+                "Helen Assistant",
+                "helen@example.com",
+                "RESEARCH_ASSISTANT"
+        ));
+        String peerAssistantToken = login("helen@example.com");
         String outsiderToken = tokenOf(register(
                 "Other Supervisor",
                 "other@example.com",
@@ -93,6 +99,7 @@ class RamsApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(projectJson(supervisorId)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdBy").value(assistantId))
                 .andExpect(jsonPath("$.assistants[0].assistantId").value(assistantId))
                 .andReturn());
 
@@ -103,8 +110,21 @@ class RamsApiTest {
         mockMvc.perform(post("/api/projects/" + projectId + "/assistants")
                         .header("Authorization", "Bearer " + supervisorToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assistantId\":" + assistantId + "}"))
-                .andExpect(status().isConflict());
+                        .content("{\"assistantId\":" + peerAssistantId + "}"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/assistants")
+                        .header("Authorization", "Bearer " + peerAssistantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"assistantId\":" + peerAssistantId + "}"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/assistants")
+                        .header("Authorization", "Bearer " + assistantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"assistantId\":" + peerAssistantId + "}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.assistantId").value(peerAssistantId));
 
         mockMvc.perform(get("/api/projects")
                         .header("Authorization", "Bearer " + assistantToken))

@@ -67,6 +67,7 @@ public class ProjectService {
         requireDateOrder(request.startDate(), request.endDate());
         Project project = new Project();
         project.setSupervisorId(supervisor.getId());
+        project.setCreatedBy(assistant.getId());
         project.setTitle(title);
         project.setDescription(Text.optional(request.description(), 20000, "Description"));
         project.setObjectives(Text.optional(request.objectives(), 20000, "Objectives"));
@@ -81,7 +82,7 @@ public class ProjectService {
         assignment.setActive(true);
         assignments.save(assignment);
 
-        return toResponse(project, supervisor, List.of(toAssignment(assignment, assistant)));
+        return toResponse(project, supervisor, assistant, List.of(toAssignment(assignment, assistant)));
     }
 
     public List<ProjectResponse> list(UserAccount user) {
@@ -93,7 +94,7 @@ public class ProjectService {
 
     public ProjectResponse get(UserAccount user, Long projectId) {
         Project project = requireVisible(user, projectId);
-        boolean includeInactive = isOwner(user, project);
+        boolean includeInactive = isOwner(user, project) || isCreator(user, project);
         return toResponses(List.of(project), includeInactive).get(0);
     }
 
@@ -171,11 +172,14 @@ public class ProjectService {
 
     @Transactional
     public AssignmentResult assign(UserAccount user, Long projectId, Long assistantId) {
-        requireOwner(user, projectId);
+        Project project = requireCreator(user, projectId);
         UserAccount assistant = users.findById(assistantId)
                 .orElseThrow(() -> ApiException.badRequest("Choose an active research assistant"));
         if (assistant.getRole() != UserRole.RESEARCH_ASSISTANT || !assistant.isActive()) {
             throw ApiException.badRequest("Choose an active research assistant");
+        }
+        if (assistantId.equals(project.getSupervisorId())) {
+            throw ApiException.badRequest("The project supervisor cannot be assigned as an assistant");
         }
         ProjectAssistant existing = assignments.findByProjectIdAndAssistantId(projectId, assistantId).orElse(null);
         if (existing != null) {
@@ -195,12 +199,15 @@ public class ProjectService {
 
     public List<AssignmentResponse> listAssistants(UserAccount user, Long projectId) {
         Project project = requireVisible(user, projectId);
-        return assignmentsFor(List.of(project.getId()), isOwner(user, project));
+        return assignmentsFor(List.of(project.getId()), isOwner(user, project) || isCreator(user, project));
     }
 
     @Transactional
     public AssignmentResponse setAssignmentActive(UserAccount user, Long projectId, Long assistantId, boolean active) {
-        requireOwner(user, projectId);
+        Project project = requireCreator(user, projectId);
+        if (!active && assistantId.equals(project.getCreatedBy())) {
+            throw ApiException.badRequest("The research assistant who created the project cannot be removed");
+        }
         ProjectAssistant assignment = assignments.findByProjectIdAndAssistantId(projectId, assistantId)
                 .orElseThrow(() -> ApiException.notFound("Assignment not found"));
         assignment.setActive(active);
@@ -230,6 +237,19 @@ public class ProjectService {
         throw ApiException.notFound("Project not found");
     }
 
+    public Project requireCreator(UserAccount user, Long projectId) {
+        Project project = projects.findById(projectId)
+                .orElseThrow(() -> ApiException.notFound("Project not found"));
+        if (isCreator(user, project)) {
+            return project;
+        }
+        if (isOwner(user, project)
+                || assignments.existsByProjectIdAndAssistantIdAndActiveTrue(projectId, user.getId())) {
+            throw ApiException.forbidden("Only the research assistant who created the project can do that");
+        }
+        throw ApiException.notFound("Project not found");
+    }
+
     public void requireActiveAssistant(UserAccount user, Long projectId) {
         if (user.getRole() != UserRole.RESEARCH_ASSISTANT
                 || !assignments.existsByProjectIdAndAssistantIdAndActiveTrue(projectId, user.getId())) {
@@ -246,8 +266,11 @@ public class ProjectService {
             return List.of();
         }
         Map<Long, UserAccount> people = new HashMap<>();
-        users.findAllById(found.stream().map(Project::getSupervisorId).distinct().toList())
-                .forEach(user -> people.put(user.getId(), user));
+        List<Long> personIds = found.stream()
+                .flatMap(project -> java.util.stream.Stream.of(project.getSupervisorId(), project.getCreatedBy()))
+                .distinct()
+                .toList();
+        users.findAllById(personIds).forEach(user -> people.put(user.getId(), user));
         List<Long> projectIds = found.stream().map(Project::getId).toList();
         List<AssignmentResponse> assignmentResponses = assignmentsFor(projectIds, includeInactiveAssistants);
         Map<Long, List<AssignmentResponse>> byProject = new HashMap<>();
@@ -257,10 +280,13 @@ public class ProjectService {
         return found.stream()
                 .map(project -> {
                     UserAccount supervisor = people.get(project.getSupervisorId());
+                    UserAccount creator = people.get(project.getCreatedBy());
                     String supervisorName = supervisor == null ? null : supervisor.getName();
+                    String createdByName = creator == null ? null : creator.getName();
                     return toResponse(
                             project,
                             supervisorName,
+                            createdByName,
                             byProject.getOrDefault(project.getId(), List.of())
                     );
                 })
@@ -279,15 +305,27 @@ public class ProjectService {
                 .toList();
     }
 
-    private static ProjectResponse toResponse(Project project, UserAccount supervisor, List<AssignmentResponse> assistants) {
-        return toResponse(project, supervisor.getName(), assistants);
+    private static ProjectResponse toResponse(
+            Project project,
+            UserAccount supervisor,
+            UserAccount creator,
+            List<AssignmentResponse> assistants
+    ) {
+        return toResponse(project, supervisor.getName(), creator.getName(), assistants);
     }
 
-    private static ProjectResponse toResponse(Project project, String supervisorName, List<AssignmentResponse> assistants) {
+    private static ProjectResponse toResponse(
+            Project project,
+            String supervisorName,
+            String createdByName,
+            List<AssignmentResponse> assistants
+    ) {
         return new ProjectResponse(
                 project.getId(),
                 project.getSupervisorId(),
                 supervisorName,
+                project.getCreatedBy(),
+                createdByName,
                 project.getTitle(),
                 project.getDescription(),
                 project.getObjectives(),
@@ -318,10 +356,8 @@ public class ProjectService {
         return user.getRole() == UserRole.SUPERVISOR && project.getSupervisorId().equals(user.getId());
     }
 
-    private static void requireSupervisor(UserAccount user) {
-        if (user.getRole() != UserRole.SUPERVISOR) {
-            throw ApiException.forbidden("Only a supervisor can do that");
-        }
+    private static boolean isCreator(UserAccount user, Project project) {
+        return user.getRole() == UserRole.RESEARCH_ASSISTANT && project.getCreatedBy().equals(user.getId());
     }
 
     private static void requireResearchAssistant(UserAccount user) {

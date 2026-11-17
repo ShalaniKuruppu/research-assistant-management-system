@@ -16,7 +16,6 @@ export default function ProjectPage() {
   const [reports, setReports] = useState([])
   const [reimbursements, setReimbursements] = useState([])
   const [researchPlanHistory, setResearchPlanHistory] = useState([])
-  const [candidates, setCandidates] = useState([])
   const [section, setSection] = useState('assistants')
   const [selectedTask, setSelectedTask] = useState(null)
   const [updates, setUpdates] = useState([])
@@ -29,23 +28,18 @@ export default function ProjectPage() {
   const [pending, setPending] = useState(false)
 
   async function load() {
-    const requests = [
+    const [projectData, taskData, reportData, history, reimbursementData] = await Promise.all([
       api(`/api/projects/${projectId}`),
       api(`/api/projects/${projectId}/tasks`),
       api(`/api/projects/${projectId}/reports`),
       api(`/api/projects/${projectId}/research-plan/history`),
       api(`/api/projects/${projectId}/reimbursements`),
-    ]
-    if (supervisor) {
-      requests.push(api('/api/users?role=RESEARCH_ASSISTANT'))
-    }
-    const [projectData, taskData, reportData, history, reimbursementData, people] = await Promise.all(requests)
+    ])
     setProject(projectData)
     setTasks(taskData)
     setReports(reportData)
     setResearchPlanHistory(history)
     setReimbursements(reimbursementData)
-    setCandidates(people || [])
     return { tasks: taskData, reports: reportData, reimbursements: reimbursementData }
   }
 
@@ -207,41 +201,9 @@ export default function ProjectPage() {
 
           {section === 'assistants' ? (
             <section className="stack">
-              {supervisor ? (
-                <form
-                  className="card"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    const assistantId = Number(new FormData(event.currentTarget).get('assistantId'))
-                    event.currentTarget.reset()
-                    run(
-                      () => api(`/api/projects/${project.id}/assistants`, {
-                        method: 'POST',
-                        body: { assistantId },
-                      }),
-                      'Research assistant assigned.',
-                    )
-                  }}
-                >
-                  <h2>Assign a research assistant</h2>
-                  {candidates.length === 0 ? (
-                    <p className="meta">No active research assistant accounts exist yet. Register one, then assign it here.</p>
-                  ) : (
-                    <label>
-                      Research assistant
-                      <select name="assistantId" required defaultValue="">
-                        <option value="" disabled>Choose an assistant</option>
-                        {candidates.map((person) => (
-                          <option key={person.id} value={person.id}>{person.name} · {person.email}</option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                  <button className="primary" type="submit" disabled={pending || candidates.length === 0}>
-                    Assign
-                  </button>
-                </form>
-              ) : null}
+              <p className="meta">
+                Only {project.createdByName || 'the research assistant who created this project'} can add or remove assistants.
+              </p>
               {activeAssistants.length === 0 && (project.assistants || []).length === 0 ? (
                 <p className="lede">No one is assigned to this project yet.</p>
               ) : null}
@@ -249,23 +211,11 @@ export default function ProjectPage() {
                 <article className="list-card static" key={assistant.id}>
                   <div>
                     <h2>{assistant.name}</h2>
-                    <p className="meta">{assistant.email} · {assistant.active ? 'Active' : 'Removed'}</p>
+                    <p className="meta">
+                      {assistant.email} · {assistant.active ? 'Active' : 'Removed'}
+                      {assistant.assistantId === project.createdBy ? ' · Creator' : ''}
+                    </p>
                   </div>
-                  {supervisor && assistant.active ? (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => run(
-                        () => api(`/api/projects/${project.id}/assistants/${assistant.assistantId}`, {
-                          method: 'PATCH',
-                          body: { active: false },
-                        }),
-                        'Assignment removed.',
-                      )}
-                    >
-                      Remove
-                    </button>
-                  ) : null}
                 </article>
               ))}
             </section>

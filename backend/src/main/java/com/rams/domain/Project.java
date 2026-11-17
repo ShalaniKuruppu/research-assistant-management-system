@@ -22,6 +22,9 @@ public class Project extends Timestamped {
     @Column(name = "supervisor_id", nullable = false)
     private Long supervisorId;
 
+    @Column(name = "created_by", nullable = false)
+    private Long createdBy;
+
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -57,6 +60,14 @@ public class Project extends Timestamped {
 
     public void setSupervisorId(Long supervisorId) {
         this.supervisorId = supervisorId;
+    }
+
+    public Long getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Long createdBy) {
+        this.createdBy = createdBy;
     }
 
     public String getTitle() {

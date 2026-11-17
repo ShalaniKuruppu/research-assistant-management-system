@@ -1,6 +1,6 @@
 # Research Assistant Management System
 
-A supervisor uses this system to run research projects and the assistants who work on them. A research assistant creates a project under a chosen supervisor, then updates task progress and files one weekly report per project. The supervisor owns the project, can assign more assistants, sets tasks, and reviews weekly reports.
+A supervisor uses this system to run research projects and the assistants who work on them. A research assistant creates a project under a chosen supervisor, then updates task progress and files one weekly report per project. The creating research assistant can add more assistants to that project. The supervisor owns the project, sets tasks, and reviews weekly reports.
 
 There are two roles. An account is either a supervisor or a research assistant, and that role stays fixed.
 
@@ -9,7 +9,6 @@ There are two roles. An account is either a supervisor or a research assistant, 
 **Supervisor**
 
 - Owns projects created under them by research assistants
-- Assigns any number of research assistants to a project
 - Creates tasks and assigns each task to an assistant on that project
 - Reads task progress
 - Reviews submitted weekly reports and records an outcome: approved or needs revision
@@ -17,6 +16,7 @@ There are two roles. An account is either a supervisor or a research assistant, 
 **Research assistant**
 
 - Creates projects and chooses the supervising account
+- Adds other research assistants only to projects they created
 - Works on the projects they create or are assigned to
 - Updates the status and completion of assigned tasks, including blockers
 - Saves a weekly report as a draft, then submits it
@@ -99,6 +99,10 @@ can expand the timestamped previous versions. Apply
 Research assistant directory cards can store phone, summary, and profile image
 URL. Apply `db/migrations/006_user_profile_fields.sql` to existing databases.
 
+Projects record the creating research assistant in `created_by`. Only that
+creator can add or remove assistants on the project. Apply
+`db/migrations/010_project_created_by.sql` to existing databases.
+
 ## Screens
 
 | Path | Who | What |
@@ -113,7 +117,7 @@ URL. Apply `db/migrations/006_user_profile_fields.sql` to existing databases.
 | `/research-assistants` | Supervisor | Assistant directory with summary, contact, photo, and allocated projects. |
 | `/profile` | Signed in | Update email, contact number, and profile picture. |
 
-The supervisor workspace assigns assistants, creates tasks, reads progress, and reviews submitted weekly reports. The assistant workspace updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. A dashboard item opens the matching task or report on that project.
+The supervisor workspace creates tasks, reads progress, and reviews submitted weekly reports. The assistant who created a project can add other research assistants to it. The assistant workspace updates assigned tasks, saves and submits a weekly report, and reads the supervisor's feedback. A dashboard item opens the matching task or report on that project.
 
 ## Domain model
 
@@ -122,8 +126,8 @@ The entity relationship diagram is in [docs/ER Diagram.png](docs/ER%20Diagram.pn
 | Table | Purpose |
 |---|---|
 | `users` | Supervisors and research assistants |
-| `projects` | A project owned by one supervisor |
-| `project_assistants` | One research assistant assigned to one project |
+| `projects` | A project created by one research assistant and owned by one supervisor |
+| `project_assistants` | One research assistant assigned to one project by that project's creator |
 | `tasks` | Work created by the supervisor and assigned to an assistant |
 | `task_updates` | Progress log for a task |
 | `weekly_reports` | One assistant's report for one project week |
@@ -134,7 +138,7 @@ The entity relationship diagram is in [docs/ER Diagram.png](docs/ER%20Diagram.pn
 ### Rules
 
 - A project can have many research assistants. The same assistant is assigned to that project only once.
-- The supervisor who owns the project assigns those assistants.
+- Only the research assistant who created the project can add or remove assistants on it.
 - A task assignee must already be an active research assistant on that project.
 - Only that project's supervisor can create its tasks.
 - Progress notes can be written by the assignee or that project's supervisor.
@@ -231,14 +235,14 @@ mvn test
 | GET | `/api/health` | Public. |
 | GET | `/api/me` | Signed in. |
 | GET | `/api/dashboard` | Signed in. Counts, project summaries, and the attention list described above. |
-| GET | `/api/users?role=RESEARCH_ASSISTANT` | Supervisor. Active research assistants, for assignment. |
-| POST | `/api/projects` | Supervisor. |
+| GET | `/api/users?role=RESEARCH_ASSISTANT` | Supervisor or research assistant. Active research assistants, for assignment. |
+| POST | `/api/projects` | Research assistant. Body includes `supervisorId`. Creator is auto-assigned. |
 | GET | `/api/projects` | Supervisor sees owned projects. An assistant sees assigned projects. |
 | GET | `/api/projects/{id}` | Owner or assigned assistant. |
 | PATCH | `/api/projects/{id}` | Owner. Send only the fields to change. |
-| POST | `/api/projects/{id}/assistants` | Owner. Body: `assistantId`. |
+| POST | `/api/projects/{id}/assistants` | Creating research assistant. Body: `assistantId`. |
 | GET | `/api/projects/{id}/assistants` | Owner or assigned assistant. |
-| PATCH | `/api/projects/{id}/assistants/{assistantId}` | Owner. Body: `active`. |
+| PATCH | `/api/projects/{id}/assistants/{assistantId}` | Creating research assistant. Body: `active`. |
 | POST | `/api/projects/{id}/tasks` | Owner. |
 | GET | `/api/projects/{id}/tasks` | Owner sees every task. An assistant sees assigned tasks. |
 | GET | `/api/tasks/{id}` | Owner or assignee. |

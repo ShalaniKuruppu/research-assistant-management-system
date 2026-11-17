@@ -69,11 +69,14 @@ public class UserController {
         if (user.getRole() == UserRole.RESEARCH_ASSISTANT && role == UserRole.SUPERVISOR) {
             return authService.listActiveByRole(role);
         }
+        if (user.getRole() == UserRole.RESEARCH_ASSISTANT && role == UserRole.RESEARCH_ASSISTANT) {
+            return authService.listActiveByRole(role);
+        }
         if (user.getRole() == UserRole.SUPERVISOR) {
             throw ApiException.badRequest("List research assistants with role=RESEARCH_ASSISTANT");
         }
         if (user.getRole() == UserRole.RESEARCH_ASSISTANT) {
-            throw ApiException.badRequest("List supervisors with role=SUPERVISOR");
+            throw ApiException.badRequest("List supervisors with role=SUPERVISOR or research assistants with role=RESEARCH_ASSISTANT");
         }
         throw ApiException.forbidden("You cannot list accounts");
     }
