@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError, api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { label } from '../format.js'
 import Shell from '../Shell.jsx'
+
+const REFRESH_MS = 30000
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -11,23 +13,52 @@ export default function DashboardPage() {
   const [dashboard, setDashboard] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const requestId = useRef(0)
 
   useEffect(() => {
     let cancelled = false
-    api('/api/dashboard')
-      .then((data) => {
-        if (!cancelled) setDashboard(data)
-      })
-      .catch((caught) => {
-        if (!cancelled) {
-          setError(caught instanceof ApiError ? caught.message : 'Could not load the dashboard')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+
+    async function loadDashboard({ silent = false } = {}) {
+      const id = ++requestId.current
+      if (!silent) setLoading(true)
+      try {
+        const data = await api('/api/dashboard')
+        if (cancelled || id !== requestId.current) return
+        setDashboard(data)
+        setError('')
+      } catch (caught) {
+        if (cancelled || id !== requestId.current) return
+        setError(caught instanceof ApiError ? caught.message : 'Could not load the dashboard')
+      } finally {
+        if (!cancelled && id === requestId.current && !silent) setLoading(false)
+      }
+    }
+
+    loadDashboard()
+
+    function refreshIfVisible() {
+      if (document.visibilityState === 'visible') {
+        loadDashboard({ silent: true })
+      }
+    }
+
+    function onFocus() {
+      loadDashboard({ silent: true })
+    }
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadDashboard({ silent: true })
+      }
+    }, REFRESH_MS)
+
+    document.addEventListener('visibilitychange', refreshIfVisible)
+    window.addEventListener('focus', onFocus)
     return () => {
       cancelled = true
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', refreshIfVisible)
+      window.removeEventListener('focus', onFocus)
     }
   }, [])
 
