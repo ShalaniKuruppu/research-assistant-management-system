@@ -138,6 +138,73 @@ export default function ProjectPage() {
           </div>
           {project.description ? <p className="lede">{project.description}</p> : null}
           {project.objectives ? <p className="meta">Objectives: {project.objectives}</p> : null}
+          {supervisor ? (
+            <form
+              key={`project-edit-${project.id}-${project.updatedAt}`}
+              className="card"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const form = new FormData(event.currentTarget)
+                const startDate = String(form.get('startDate'))
+                const endDate = String(form.get('endDate'))
+                if (endDate < startDate) {
+                  setError('The end date must be on or after the start date')
+                  return
+                }
+                run(
+                  () => api(`/api/projects/${project.id}`, {
+                    method: 'PATCH',
+                    body: {
+                      title: String(form.get('title') || '').trim(),
+                      description: String(form.get('description') || '').trim(),
+                      objectives: String(form.get('objectives') || '').trim(),
+                      startDate,
+                      endDate,
+                      status: String(form.get('status')),
+                    },
+                  }),
+                  'Project updated.',
+                )
+              }}
+            >
+              <h2>Edit project</h2>
+              <label>
+                Title
+                <input name="title" required maxLength={200} defaultValue={project.title} />
+              </label>
+              <label>
+                Description
+                <textarea name="description" rows={3} defaultValue={project.description || ''} />
+              </label>
+              <label>
+                Objectives
+                <textarea name="objectives" rows={3} defaultValue={project.objectives || ''} />
+              </label>
+              <div className="split">
+                <label>
+                  Start date
+                  <input name="startDate" type="date" required defaultValue={project.startDate} />
+                </label>
+                <label>
+                  End date
+                  <input name="endDate" type="date" required defaultValue={project.endDate} />
+                </label>
+              </div>
+              <label>
+                Status
+                <select name="status" defaultValue={project.status}>
+                  <option value="PLANNED">Planned</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="ON_HOLD">On hold</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="ARCHIVED">Archived</option>
+                </select>
+              </label>
+              <button className="primary" type="submit" disabled={pending}>
+                Save project
+              </button>
+            </form>
+          ) : null}
           <section className="card">
             <h2>Research plan</h2>
             {project.researchPlan ? (
@@ -315,6 +382,7 @@ export default function ProjectPage() {
                       <h2>{task.title}</h2>
                       <p className="meta">
                         {names.get(task.assignedTo) || 'Assistant'} · {label(task.priority)} · due {task.dueDate}
+                        {task.active ? '' : ' · Inactive'}
                       </p>
                     </div>
                     <span className="role">{label(task.status)} · {task.completionPercentage}%</span>
@@ -325,7 +393,115 @@ export default function ProjectPage() {
                 <h2>Task progress</h2>
                 {selectedTask ? (
                   <>
-                    <p className="meta">{selectedTask.title}</p>
+                    <p className="meta">
+                      {selectedTask.title}
+                      {selectedTask.active ? '' : ' · Inactive'}
+                    </p>
+                    {supervisor ? (
+                      <form
+                        key={`task-edit-${selectedTask.id}-${selectedTask.updatedAt}`}
+                        className="stack"
+                        onSubmit={(event) => {
+                          event.preventDefault()
+                          const form = new FormData(event.currentTarget)
+                          const startDate = String(form.get('startDate'))
+                          const dueDate = String(form.get('dueDate'))
+                          if (dueDate < startDate) {
+                            setError('The due date must be on or after the start date')
+                            return
+                          }
+                          const taskId = selectedTask.id
+                          const assignedTo = Number(form.get('assignedTo'))
+                          const assigneeActive = (project.assistants || []).some(
+                            (assistant) => assistant.assistantId === assignedTo && assistant.active,
+                          )
+                          const body = {
+                            title: String(form.get('title') || '').trim(),
+                            description: String(form.get('description') || '').trim(),
+                            priority: String(form.get('priority')),
+                            startDate,
+                            dueDate,
+                            expectedDeliverables: String(form.get('expectedDeliverables') || '').trim(),
+                            active: String(form.get('active')) === 'true',
+                          }
+                          if (assigneeActive || assignedTo !== selectedTask.assignedTo) {
+                            body.assignedTo = assignedTo
+                          }
+                          run(async () => {
+                            const updated = await api(`/api/tasks/${taskId}`, {
+                              method: 'PATCH',
+                              body,
+                            })
+                            setSelectedTask(updated)
+                            setUpdates(await api(`/api/tasks/${taskId}/updates`))
+                          }, 'Task updated.')
+                        }}
+                      >
+                        <h3>Edit task</h3>
+                        {!taskAssigneeOptions(project, selectedTask).some(
+                          (assistant) => assistant.assistantId === selectedTask.assignedTo && assistant.active,
+                        ) ? (
+                          <p className="meta">
+                            The current assignee is no longer active on this project. Choose an active assistant to reassign.
+                          </p>
+                        ) : null}
+                        <label>
+                          Assign to
+                          <select name="assignedTo" required defaultValue={selectedTask.assignedTo}>
+                            {taskAssigneeOptions(project, selectedTask).map((assistant) => (
+                              <option key={assistant.assistantId} value={assistant.assistantId}>
+                                {assistant.name}{assistant.active ? '' : ' (removed)'}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Title
+                          <input name="title" required maxLength={200} defaultValue={selectedTask.title} />
+                        </label>
+                        <label>
+                          Description
+                          <textarea name="description" rows={2} defaultValue={selectedTask.description || ''} />
+                        </label>
+                        <label>
+                          Priority
+                          <select name="priority" defaultValue={selectedTask.priority}>
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HIGH">High</option>
+                          </select>
+                        </label>
+                        <div className="split">
+                          <label>
+                            Start
+                            <input name="startDate" type="date" required defaultValue={selectedTask.startDate} />
+                          </label>
+                          <label>
+                            Due
+                            <input name="dueDate" type="date" required defaultValue={selectedTask.dueDate} />
+                          </label>
+                        </div>
+                        <label>
+                          Expected deliverables
+                          <textarea
+                            name="expectedDeliverables"
+                            rows={2}
+                            defaultValue={selectedTask.expectedDeliverables || ''}
+                          />
+                        </label>
+                        <label>
+                          Active
+                          <select name="active" defaultValue={selectedTask.active ? 'true' : 'false'}>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                          </select>
+                        </label>
+                        <button className="primary" type="submit" disabled={pending}>
+                          Save task
+                        </button>
+                      </form>
+                    ) : null}
+                    <h3>Progress notes</h3>
                     {updates.length === 0 ? <p>No progress notes yet.</p> : null}
                     <ol className="timeline">
                       {updates.map((update) => (
@@ -553,6 +729,16 @@ async function openReceiptFile(downloadUrl, filename) {
     link.click()
   }
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
+function taskAssigneeOptions(project, task) {
+  const assistants = project?.assistants || []
+  const active = assistants.filter((assistant) => assistant.active)
+  const current = assistants.find((assistant) => assistant.assistantId === task.assignedTo)
+  if (current && !current.active) {
+    return [current, ...active]
+  }
+  return active
 }
 
 function ReportBody({ report }) {
